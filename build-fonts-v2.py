@@ -70,6 +70,7 @@ def save(fam, faces, cat, ml, licname, lictext, source, modified, extra=None):
     manifest.append(e); lic_rows.append(e)
 
 # ---------- English (Google Fonts) ----------
+EXTRA = {'Montserrat': [(900, True)], 'Inter': [(900, True)]}
 WANT = [(400, False), (700, False), (400, True), (300, False), (900, False)]
 for cat, fams in EN.items():
     for fam in fams:
@@ -81,8 +82,8 @@ for cat, fams in EN.items():
         keep_unmod = rfn(lictext)
         var = [p for p in srcs if '[' in p]; static = [p for p in srcs if '[' not in p]
         faces = {}
-        for w, it in WANT:
-            if (300 in (w,) or 900 in (w,)) and cat not in ('Serif', 'Sans', 'Condensed'): continue
+        for w, it in WANT + EXTRA.get(fam, []):
+            if (300 in (w,) or 900 in (w,)) and fam not in EXTRA and cat not in ('Serif', 'Sans', 'Condensed'): continue
             pick = None
             if static:
                 nm = {400: 'Regular', 700: 'Bold', 300: 'Light', 900: 'Black'}[w]

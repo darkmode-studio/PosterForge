@@ -1,7 +1,4 @@
-Copyright (c) 2024-2025, Karambir Singh Rohilla (https://designfist.com),
-Rajeesh KV (<rajeesh@rachana.org.in>), Rachana Institute of Typography
-(http://rachana.org.in)
-with Reserved Font Name ‘RIT Thaara’.
+Copyright 2014 The Comic Neue Project Authors (https://github.com/crozynski/comicneue)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
