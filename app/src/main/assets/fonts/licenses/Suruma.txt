@@ -1,0 +1,5 @@
+Digitized data copyright,2007-2009  suresh p. <psuresh@gmx.com>
+
+GNU General Public License v3 (or later) with the font embedding exception.
+As a special exception, if you create a document which uses this font, and embed this font or unaltered portions of this font into the document, this font does not by itself cause the resulting document to be covered by the GNU General Public License.
+Full text: https://www.gnu.org/licenses/gpl-3.0.txt

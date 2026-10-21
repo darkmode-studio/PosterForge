@@ -1,0 +1,16 @@
+<resources>
+    <!-- Android 12+ SplashScreen API (backported by androidx.core:core-splashscreen) -->
+    <style name="Theme.PosterForge.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/tf_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash</item>
+        <item name="windowSplashScreenAnimationDuration">300</item>
+        <item name="postSplashScreenTheme">@style/Theme.PosterForge</item>
+    </style>
+    <style name="Theme.PosterForge" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/tf_bg</item>
+        <item name="android:colorAccent">@color/tf_accent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

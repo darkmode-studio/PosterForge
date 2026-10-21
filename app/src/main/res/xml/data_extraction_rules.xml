@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: cloud backup and device-to-device transfer of the WebView storage (IndexedDB + localStorage). -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="root" path="app_webview/" />
+        <exclude domain="sharedpref" path="pf_secure.xml" />
+        <exclude domain="root" path="app_webview/Default/GPUCache/" />
+        <exclude domain="root" path="app_webview/Default/Service Worker/CacheStorage/" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="root" path="app_webview/" />
+        <exclude domain="sharedpref" path="pf_secure.xml" />
+    </device-transfer>
+</data-extraction-rules>

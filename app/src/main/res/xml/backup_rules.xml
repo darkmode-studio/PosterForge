@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 6-11 auto backup. WebView storage (IndexedDB: projects, presets, fonts, quotes; localStorage)
+     lives under app_webview/. Google limits auto backup to 25 MB per app; bigger data is skipped. -->
+<full-backup-content>
+    <include domain="root" path="app_webview/" />
+        <exclude domain="sharedpref" path="pf_secure.xml" />
+    <exclude domain="root" path="app_webview/Default/GPUCache/" />
+    <exclude domain="root" path="app_webview/Default/Service Worker/CacheStorage/" />
+</full-backup-content>
