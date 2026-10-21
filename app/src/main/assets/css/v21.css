@@ -75,3 +75,6 @@ button.tile { border: none; font: inherit; color: inherit; }
 /* custom path */
 .path-hint { position: fixed; z-index: 81; left: 50%; transform: translateX(-50%); top: calc(var(--sat) + 64px); display: flex; gap: 12px; align-items: center;
   padding: 8px 8px 8px 16px; border-radius: 22px; background: rgba(20,23,30,.9); color: #fff; font: 500 13px Poppins; }
+/* 2.1: standalone accent buttons (quick-start "Use this" etc.) */
+.btn-accent { min-height: 44px; padding: 0 var(--s2); border-radius: 22px; border: none; font: 600 13px 'Inter', 'Poppins', sans-serif; background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+.qs-use { width: 100%; }
