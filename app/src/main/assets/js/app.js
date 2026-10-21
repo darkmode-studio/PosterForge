@@ -163,6 +163,7 @@ async function restore(str) {
   await ensureFonts(s.canvas);
   await new Promise((r) => canvas.loadFromJSON(s.canvas, r));
   await prepareMasks(canvas.getObjects());
+  enforceLocks();
   canvas.getObjects().forEach((o) => { if (o.type === 'text' || o.type === 'i-text') o.initDimensions(); o.setCoords(); });
   layout();
   canvas.requestRenderAll();
@@ -170,7 +171,7 @@ async function restore(str) {
 }
 const history = new History({ serialize, restore, onChange: () => { $('btnUndo').disabled = !history.canUndo; $('btnRedo').disabled = !history.canRedo; scheduleAutosave(); } });
 
-canvas.on('object:added', () => { if (!history.muted) { history.record(); refreshLayers(); } });
+canvas.on('object:added', (e) => { if (e && e.target && e.target.locked) enforceLocks([e.target]); if (!history.muted) { history.record(); refreshLayers(); } });
 canvas.on('object:removed', () => { if (!history.muted) { history.record(); refreshLayers(); } });
 canvas.on('object:modified', () => { history.record(); refreshLayers(); syncEditPanel(); });
 canvas.on('selection:created', () => { fontGroup = null; refreshLayers(); syncEditPanel(); });
@@ -407,8 +408,16 @@ async function addImageFromURL(url, name, { cover = false, width = 0.6, role } =
   fitInside(img, cover ? 10 : 0.95);
   return img;
 }
+// 2.1.1: a locked layer is click-through on the canvas (not selectable, not hit by tap / long-press / drag / marquee).
+// It can only be selected or unlocked from the Layers panel. Re-applied after every load / undo / redo (enforceLocks).
 function setLocked(o, l) {
-  o.set({ locked: l, lockMovementX: l, lockMovementY: l, lockScalingX: l, lockScalingY: l, lockRotation: l, hasControls: !l });
+  l = !!l;
+  o.set({ locked: l, lockMovementX: l, lockMovementY: l, lockScalingX: l, lockScalingY: l, lockRotation: l, hasControls: !l, selectable: !l, evented: !l });
+}
+function enforceLocks(objs = canvas.getObjects()) {
+  for (const o of objs) {
+    if (o.locked) o.set({ selectable: false, evented: false, lockMovementX: true, lockMovementY: true, lockScalingX: true, lockScalingY: true, lockRotation: true, hasControls: false });
+  }
 }
 
 // ---------- layers ----------
@@ -849,7 +858,7 @@ canvasWrap.addEventListener('pointerdown', (e) => {
   const prev = active(); // captured before Fabric replaces the selection on this press
   longPress = { sx, sy, t: setTimeout(() => {
     longPress = null;
-    const target = canvas.findTarget(e, false); if (!target) return;
+    const target = canvas.findTarget(e, false); if (!target || target.locked) return;
     haptic('heavy');
     // 2.1: long-press a single photo (not in select mode) = lift the subject, like iOS
     if (!selectMode && target.type === 'image' && !(prev && prev !== target) && window.PFLift) { window.PFLift(target); return; }
@@ -1155,8 +1164,15 @@ async function importPhoto(f, { maxSide = WORK_SIDE, label = 'Importing photo…
     return o;
   } finally { pt.done(); }
 }
+/** 2.1.1: a photo added to an empty canvas fills the artboard (cover-fit, centred) instead of landing as a small square. */
+function coverFitIfEmpty(o) {
+  if (canvas.getObjects().length) return false;
+  o.set({ angle: 0, flipX: false, flipY: false }); o.scale(Math.max(state.W / o.width, state.H / o.height)); o.set(center()); o.setCoords();
+  return true;
+}
 onFile('imageUploadInput', async (f) => {
   const o = await importPhoto(f);
+  coverFitIfEmpty(o);
   canvas.add(o); canvas.setActiveObject(o); canvas.requestRenderAll();
 });
 onFile('bgImageInput', async (f) => {
@@ -1747,7 +1763,7 @@ window.PF = { canvas, history, state, serialize, restore, exportPNGBlob, exportS
   groupSel, ungroupSel, setSelectMode, isSelectMode: () => selectMode, clipPhoto, unclip, applyClipAdjust, setBlend, BLENDS, applyFilter, filterOf,
   maskDab, maskStroke, maskGradient, maskInvert, maskClear, setMaskPaint, maskPaint, prepareMasks, importPhoto, traceBlob, cutoutSheet, renderStatic,
   useOriginals, exportBudget, fitsBudget, exportTiled, doExport, exportSheet, updateContext, safeMargin, guides, ready: false,
-  PROPS, projectState, projectStateForStorage, restoreProject, projectFonts, makeText, addImageFromURL, setFont, editText, ensureFonts, dataURLsFor, blobURLsFor, setLocked,
+  PROPS, enforceLocks, coverFitIfEmpty, projectState, projectStateForStorage, restoreProject, projectFonts, makeText, addImageFromURL, setFont, editText, ensureFonts, dataURLsFor, blobURLsFor, setLocked,
   syncEditPanel, thumbnail, setImageSrc, newPoster, openProjectsSheet, fitInside, artboardSheet, backgroundSheet, stamp, active, isText, clampFont, scheduleAutosave,
   getCurrentPane: () => currentPane, presets: PRESETS, PANE_TITLES, CTX_PANES, TOOL_PANES };
 boot().then(() => { window.PF.ready = true; }).catch((e) => { console.error(e); toast('Startup error: ' + e.message, 'error'); window.PF.ready = true; });

@@ -63,6 +63,9 @@
   P.jobAppend = (t, b64) => (subj[t] ? (subj[t].b64.push(b64), true) : jobAppend0(t, b64));
   P.jobRun = (t) => { const j = subj[t]; if (!j) return jobRun0(t); setTimeout(async () => {
     const m = window.__pfSubject.mode;
+    if (m === 'whole') { // buggy engine: returns the whole opaque photo (the 2.1.0 device bug)
+      const bm = await createImageBitmap(new Blob([b64ToBytes(j.b64)])); const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height; c.getContext('2d').drawImage(bm, 0, 0);
+      window.__pfNativeCb(t, JSON.stringify({ ok: true, url: c.toDataURL('image/png'), w: bm.width, h: bm.height, x: 0, y: 0, srcW: bm.width, srcH: bm.height })); return; }
     if (m !== 'ellipse') { window.__pfNativeCb(t, JSON.stringify({ ok: false, code: m === 'none' ? 'no_subject' : m, error: m })); return; }
     const bm = await createImageBitmap(new Blob([b64ToBytes(j.b64)])); const W = bm.width, H = bm.height;
     const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');

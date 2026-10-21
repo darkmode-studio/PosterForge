@@ -25,6 +25,16 @@ function elementCanvas(img, maxSide = 2048) {
 }
 const loadImg = (url) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('image load failed')); i.src = url; });
 
+/** True when the image has a meaningful share (>= 2%) of fully transparent pixels. */
+export async function hasTransparency(url) {
+  try {
+    const im = await loadImg(url); const k = Math.min(1, 256 / Math.max(im.naturalWidth, im.naturalHeight));
+    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k));
+    const x = c.getContext('2d'); x.drawImage(im, 0, 0, c.width, c.height); const d = x.getImageData(0, 0, c.width, c.height).data;
+    let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] < 8) n++;
+    return n / (d.length / 4) >= 0.02;
+  } catch (_) { return false; }
+}
 /** Places the lifted PNG exactly over the source photo. r = { url, x, y, w, h, srcW, srcH } in the sent image's pixels. */
 export async function placeLifted(src, r) {
   const pf = PF(); const e = src.getElement(); const elW = e.naturalWidth || e.width; const f = elW / r.srcW;
@@ -32,6 +42,8 @@ export async function placeLifted(src, r) {
   const p = fabric.util.transformPoint(new fabric.Point(lx, ly), src.calcTransformMatrix());
   const im = await loadImg(r.url);
   const o = new fabric.Image(im, { originX: 'center', originY: 'center', left: p.x, top: p.y, scaleX: src.scaleX * f, scaleY: src.scaleY * f, angle: src.angle, flipX: src.flipX, flipY: src.flipY, name: 'Subject', pfRole: 'subject' });
+  // a lifted subject is a normal, editable layer even when the source photo is a locked background
+  pf.setLocked(o, false);
   const idx = pf.canvas.getObjects().indexOf(src);
   pf.canvas.insertAt(o, idx + 1);
   return o;
@@ -55,6 +67,8 @@ export async function liftSubject(src) {
     const { c } = elementCanvas(src, 2048);
     const r = await nativeJob('subject', await canvasToBlob(c), { maxSide: 2048 }, { onProgress: pt.set });
     if (!r.ok) { toast(LIFT_MESSAGES[r.code] || r.error || 'Subject lift failed', 'error', 5000); return null; }
+    // never add a duplicate of the photo: the result must be a real cutout with transparent background pixels
+    if (!r.url || !(await hasTransparency(r.url))) { toast(LIFT_MESSAGES.no_subject, 'error', 5000); return null; }
     const o = await pf.history.batch(async () => {
       const lay = await placeLifted(src, r);
       const sc = document.createElement('canvas'); sc.width = r.w; sc.height = r.h; sc.getContext('2d').drawImage(c, r.x, r.y, r.w, r.h, 0, 0, r.w, r.h);

@@ -246,6 +246,46 @@ async def main():
         rot=await E('''async()=>{ const src=PF.canvas.getObjects().find(o=>o.type==='image'&&o.pfRole!=='subject'); src.set({angle:30, scaleX:src.scaleX*0.7, scaleY:src.scaleY*0.7, flipX:true}); src.setCoords();
           const o=await PF21.liftSubject(src); document.querySelectorAll('.sheet-backdrop').forEach(b=>b.remove()); const a=src.getCenterPoint(), b=o.getCenterPoint(); return {d:Math.hypot(a.x-b.x,a.y-b.y), ang:o.angle, flip:o.flipX} }''')
         check('lift lines up on a rotated, scaled, flipped photo', rot['d']<2 and rot['ang']==30 and rot['flip'], rot)
+        # ---------- 2.1.1 fixes ----------
+        await E("()=>{ PF.canvas.getObjects().filter(o=>o.pfRole==='subject').forEach(o=>PF.canvas.remove(o)); document.querySelectorAll('.sheet-backdrop').forEach(b=>b.remove()); }")
+        # whole-photo result from the engine (2.1.0 device bug) -> error, no duplicate layer
+        wh=await E('''async()=>{ window.__pfSubject.mode='whole'; document.querySelectorAll('.toast').forEach(t=>t.remove()); const n=PF.canvas.getObjects().length; const src=PF.canvas.getObjects().find(o=>o.type==='image');
+          const o=await PF21.liftSubject(src); window.__pfSubject.mode='ellipse'; return {o:!!o, n0:n, n1:PF.canvas.getObjects().length, msg:[...document.querySelectorAll('.toast')].map(t=>t.textContent).join('|')} }''')
+        check('lift: a result without transparency (whole photo) shows an error and adds no layer', not wh['o'] and wh['n0']==wh['n1'] and 'No clear subject' in wh['msg'], wh)
+        # lift does not lock, even from a locked background photo
+        lk=await E('''async()=>{ const src=PF.canvas.getObjects().find(o=>o.type==='image'); src.set({angle:0,flipX:false}); src.setCoords(); PF.setLocked(src,true);
+          const o=await PF21.liftSubject(src); document.querySelectorAll('.sheet-backdrop').forEach(b=>b.remove());
+          const ok={locked:!!o.locked, sel:o.selectable, ev:o.evented, lm:!!o.lockMovementX, row:[...document.querySelectorAll('.layer-name small')].map(x=>x.textContent)};
+          PF.canvas.remove(o); PF.setLocked(src,false); return ok }''')
+        check('a lifted subject is never locked (selectable, movable)', not lk['locked'] and lk['sel'] and lk['ev'] and not lk['lm'], lk)
+        # locked top layer is click-through: tap selects the layer below
+        pos=await E('''()=>{ PF.canvas.discardActiveObject(); const r=new fabric.Rect({left:540,top:675,originX:'center',originY:'center',width:400,height:400,fill:'#e11d48',name:'Lock test'}); PF.canvas.add(r); PF.setLocked(r,true); PF.canvas.discardActiveObject(); PF.canvas.requestRenderAll();
+          const v=PF.canvas.viewportTransform; const b=PF.canvas.upperCanvasEl.getBoundingClientRect(); return {x:b.left+v[4]+540*v[0], y:b.top+v[5]+675*v[3]} }''')
+        await E("()=>PF.closePanel()"); await pg.wait_for_timeout(300)
+        await pg.mouse.click(pos['x'],pos['y']); await pg.wait_for_timeout(300)
+        st=await E("()=>{const a=PF.canvas.getActiveObject(); return {name:a&&a.name, type:a&&a.type, hit:PF.canvas.findTarget({clientX:%f,clientY:%f},false)?.name}}" % (pos['x'],pos['y']))
+        check('locked top layer: a tap at its position selects the layer below', st['type']=='image' and st['name']!='Lock test' and st['hit']!='Lock test', st)
+        # can't be dragged: not even when picked from the Layers panel
+        await E("()=>{ const r=PF.canvas.getObjects().find(o=>o.name==='Lock test'); PF.canvas.setActiveObject(r); PF.canvas.requestRenderAll(); }")
+        await pg.mouse.move(pos['x'],pos['y']); await pg.mouse.down(); await pg.mouse.move(pos['x']+120,pos['y']+90,steps=8); await pg.mouse.up(); await pg.wait_for_timeout(300)
+        dr=await E("()=>{ const r=PF.canvas.getObjects().find(o=>o.name==='Lock test'); return {l:r.left,t:r.top} }")
+        check('a locked layer cannot be dragged', dr=={'l':540,'t':675}, dr)
+        # marquee over it collects nothing locked; lock survives undo, redo and reload
+        sv=await E('''async()=>{ const g=()=>{const r=PF.canvas.getObjects().find(o=>o.name==='Lock test'); return r&&[r.locked,r.selectable,r.evented].join()};
+          PF.canvas.discardActiveObject(); const col=PF.canvas._collectObjects ? PF.canvas._collectObjects.call(Object.assign(Object.create(PF.canvas),{_groupSelector:{ex:0,ey:0,left:1080,top:1350}}),{}) : [];
+          const out={marquee:col.map(o=>o.name).includes('Lock test')};
+          const r=PF.canvas.getObjects().find(o=>o.name==='Lock test'); r.set({opacity:0.5}); PF.history.record(); await PF.history.undo(); out.undo=g(); await PF.history.redo(); out.redo=g();
+          await PF.restoreProject(JSON.parse(JSON.stringify(PF.projectState()))); out.reload=g(); return out }''')
+        check('lock survives undo, redo and reload; marquee skips locked layers', not sv['marquee'] and sv['undo']==sv['redo']==sv['reload']=='true,false,false', sv)
+        await E("()=>{ const r=PF.canvas.getObjects().find(o=>o.name==='Lock test'); PF.canvas.remove(r); }")
+        # a photo added to an empty story canvas fills the artboard
+        await E("async()=>{ await PF.setArtboard(1080,1920,false); PF.canvas.clear(); }")
+        await pg.set_input_files('#imageUploadInput', p1); await pg.wait_for_timeout(2000)
+        cf=await E("()=>{ const o=PF.canvas.getObjects()[0]; const b=o.getBoundingRect(true,true); return {l:Math.round(b.left),t:Math.round(b.top),r:Math.round(b.left+b.width),b:Math.round(b.top+b.height)} }")
+        check('a photo on an empty story canvas is cover-fitted to fill the artboard', cf['l']<=0 and cf['t']<=0 and cf['r']>=1080 and cf['b']>=1920, cf)
+        await pg.wait_for_timeout(300); await shot(pg, f'{SH}/31-story-cover-fit.png')
+        await E("async()=>{ await PF.setArtboard(1080,1350,false); PF.canvas.clear(); }")
+        await pg.set_input_files('#imageUploadInput', p1); await pg.wait_for_timeout(2000)
         # ---------- smart colours ----------
         await E("()=>{ PF.canvas.getObjects().filter(o=>o.pfRole==='subject').forEach(o=>PF.canvas.remove(o)); }")
         await E("()=>document.querySelector('[data-template]')")
