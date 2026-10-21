@@ -28,7 +28,7 @@ def paper(name, base, n=512, amp=(7, 4, 3), fibers=True):
                     d.line([(x + dx, y + dy), (x + dx + L * math.cos(ang), y + dy + L * math.sin(ang))], fill=c, width=1)
     im.save(os.path.join(OUT, name), 'WEBP', quality=72, method=6)
 
-paper('paper-ivory.webp', (243, 237, 223))
+paper('paper-ivory.webp', (243, 237, 223), amp=(2.2, 2.0, 2.4))
 paper('paper-green.webp', (22, 56, 40), amp=(6, 3, 3))
 paper('paper-maroon.webp', (88, 20, 28), amp=(6, 3, 3))
 paper('paper-navy.webp', (18, 30, 58), amp=(6, 3, 3))

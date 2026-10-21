@@ -47,14 +47,15 @@ export function popoutObjects({ W, H, id, photo, subject, sb, words = {}, leaves
     fill: { type: 'radial', gradientUnits: 'pixels', coords: { x1: R, y1: R, r1: 0, x2: R, y2: R, r2: R }, colorStops: [{ offset: 0, color: 'rgba(30,22,14,0.55)' }, { offset: 0.55, color: 'rgba(30,22,14,0.22)' }, { offset: 1, color: 'rgba(30,22,14,0)' }] },
     name: 'Contact shadow' }, 'popShadow');
   const leafPos = [
-    { left: win.x - border * 0.4, top: win.y + win.h * 0.04, angle: -28, w: W * 0.34, flipX: false },
-    { left: win.x + win.w + border * 0.6, top: win.y + win.h * 0.97, angle: 152, w: W * 0.36, flipX: true },
+    { left: win.x - border * 0.2, top: win.y + win.h * 0.06, angle: -32, w: W * 0.24, flipX: false },
+    { left: win.x + win.w + border * 0.4, top: win.y + win.h * 0.95, angle: 152, w: W * 0.3, flipX: true },
   ];
   const leafObjs = leaves.slice(0, 2).map((li, i) => meta({ type: 'image', version: '5.3.0', originX: 'center', originY: 'center', src: LEAVES[li % LEAVES.length], crossOrigin: null,
     left: leafPos[i].left, top: leafPos[i].top, angle: leafPos[i].angle, flipX: leafPos[i].flipX, pfLeafW: leafPos[i].w, name: 'Leaf sticker', pfAlpha: true }, 'popLeaf'));
   const title = txt(words.title ?? 'THE QUIET ESCAPE', { left: W / 2, top: win.y - border - 62 * k, fontFamily: 'Cinzel', fontSize: 34 * k, charSpacing: 420, fill: '#3b3428', pfPopout: id });
-  const note = txt(words.note ?? 'where the sky keeps its promises', { left: W / 2, top: Math.min(H - 150 * k, win.y + win.h + border + 70 * k), fontFamily: 'Cormorant Garamond', fontStyle: 'italic', fontSize: 40 * k, fill: '#4a4034', pfPopout: id });
-  const script = txt(words.script ?? 'with love', { left: W * 0.74, top: Math.min(H - 70 * k, win.y + win.h + border + 150 * k), angle: -7, fontFamily: 'Great Vibes', fontSize: 64 * k, fill: '#7a5a3a', pfPopout: id });
+  const below = Math.max(win.y + win.h + border + 70 * k, sb.y + 48 * k);
+  const note = txt(words.note ?? 'where the sky keeps its promises', { left: W / 2, top: Math.min(H - 150 * k, below), fontFamily: 'Cormorant Garamond', fontStyle: 'italic', fontSize: 40 * k, fill: '#4a4034', pfPopout: id });
+  const script = txt(words.script ?? 'with love', { left: W * 0.72, top: Math.min(H - 64 * k, below + 82 * k), angle: -7, fontFamily: 'Great Vibes', fontSize: 64 * k, fill: '#7a5a3a', pfPopout: id });
   const counter = txt(words.counter ?? '01 / 05', { left: W - 80 * k, top: 64 * k, fontFamily: 'Cormorant Garamond', fontSize: 28 * k, charSpacing: 120, fill: '#5a5044', pfRole: 'pageNo', pfPopout: id, name: 'Page number' });
   return [paper, frame, ph, ...leafObjs, shadow, sub, title, note, script, counter];
 }
