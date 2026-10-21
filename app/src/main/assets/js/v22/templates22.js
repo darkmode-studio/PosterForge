@@ -11,7 +11,7 @@ const img = (src, cx, cy, s, extra = {}) => ({ type: 'image', version: '5.3.0', 
 const clipR = (x, y, w, h) => ({ type: 'rect', version: '5.3.0', originX: 'left', originY: 'top', left: x, top: y, width: w, height: h, fill: '#000', strokeWidth: 0, absolutePositioned: true });
 const page = (bg, objects) => ({ version: '5.3.0', background: bg, objects });
 const paperRect = (W, H, src) => ({ type: 'rect', version: '5.3.0', left: 0, top: 0, width: W, height: H, strokeWidth: 0, fill: { type: 'pattern', source: src, repeat: 'repeat' }, name: 'Paper', pfRole: 'bg', selectable: false, evented: false, locked: true, hasControls: false });
-const counter = (W, t, color = '#ffffff', font = 'Cormorant Garamond') => txt(t, { left: W - 80, top: 70, fontFamily: font, fontSize: 30, fill: color, pfRole: 'counter', name: 'Page counter', charSpacing: 80 });
+const counter = (W, t, color = '#ffffff', font = 'Cormorant Garamond') => txt(t, { left: W - 80, top: 70, fontFamily: font, fontSize: 30, fill: color, pfRole: 'pageNo', name: 'Page number', charSpacing: 80 });
 
 /** Three stacked strips with black gaps; the middle strip's subject breaks out over the strip edges. */
 export function threeStrip(W = 1080, H = 1920) {
