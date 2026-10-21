@@ -129,9 +129,24 @@ class NativeBridge(private val activity: MainActivity, private val webView: WebV
     private fun runJob(token: String, j: Job): JSONObject {
         var last = 0L
         val prog = ImageOps.Progress { f -> val now = System.currentTimeMillis(); if (now - last > 120 || f >= 1f) { last = now; progress(token, f) } }
-        val r = Jobs.run(j.kind, j.params, j.input.toByteArray(), jobsDir, token, prog) { j.cancelled }
+        val r = if (j.kind == "subject") { prog.at(0.1f); SubjectLift.run(j.input.toByteArray(), j.params.optInt("maxSide", 2048).coerceIn(256, 4096), jobsDir, segmenter).also { prog.at(1f) } }
+                else Jobs.run(j.kind, j.params, j.input.toByteArray(), jobsDir, token, prog) { j.cancelled }
         r.optString("file").takeIf { it.isNotEmpty() }?.let { r.remove("file"); r.put("url", "https://appassets.androidplatform.net/jobs/$it") }
         return r
+    }
+
+    // ---- 2.1 subject lift + image clipboard ----
+    /** Swappable for tests. Real engine: on-device ML Kit Subject Segmentation via Play services. */
+    internal var segmenter: SubjectLift.Segmenter = SubjectLift.Segmenter { MlKitSegmenter(activity).foreground(it) }
+    @JavascriptInterface fun subjectInfo(): String = JSONObject().put("playServices", MlKitSegmenter.playServicesOk(activity)).toString()
+    /** Reads an image from the system clipboard -> { ok, url, w, h } | { ok:false, code, error } via __pfNativeCb. */
+    @JavascriptInterface
+    fun clipboardImage(token: String) {
+        io.execute {
+            val r = try { SubjectLift.pasteFromClipboard(activity, jobsDir) } catch (e: Exception) { SubjectLift.fail("failed", e.message ?: "paste failed") }
+            r.optString("file").takeIf { it.isNotEmpty() }?.let { r.remove("file"); r.put("url", "https://appassets.androidplatform.net/jobs/$it") }
+            reply(token, r)
+        }
     }
 
     @JavascriptInterface fun jobRelease(url: String) { val name = url.substringAfterLast('/'); if (name.matches(Regex("j[0-9a-f]{32}\\.(png|jpg)"))) File(jobsDir, name).delete() }
@@ -204,6 +219,13 @@ class NativeBridge(private val activity: MainActivity, private val webView: WebV
         val p = pending.remove(token) ?: return reply(token, JSONObject().put("ok", false).put("error", "unknown token"))
         try { p.out?.flush(); p.out?.close() } catch (_: Exception) {}
         if (action == "share") { share(token, p); return }
+        if (action == "copy") {
+            main.post {
+                try { SubjectLift.copyToClipboard(activity, p.file); reply(token, JSONObject().put("ok", true).put("copied", true)) }
+                catch (e: Exception) { reply(token, JSONObject().put("ok", false).put("error", e.message ?: "copy failed")) }
+            }
+            return
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
             ContextCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             waitingForPermission = token to p

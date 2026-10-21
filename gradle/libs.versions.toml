@@ -7,6 +7,8 @@ webkit = "1.14.0"
 splashscreen = "1.2.0"
 
 [libraries]
+mlkit-subject = { group = "com.google.android.gms", name = "play-services-mlkit-subject-segmentation", version = "16.0.0-beta1" }
+play-services-base = { group = "com.google.android.gms", name = "play-services-base", version = "18.5.0" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version = "1.1.0" }
 junit = { group = "junit", name = "junit", version = "4.13.2" }
 robolectric = { group = "org.robolectric", name = "robolectric", version = "4.16" }

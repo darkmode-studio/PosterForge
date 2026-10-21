@@ -20,8 +20,8 @@ android {
         applicationId = "com.sandeep.posterforge"
         minSdk = 24
         targetSdk = 36
-        versionCode = 4
-        versionName = "2.0.0"
+        versionCode = 5
+        versionName = "2.1.0"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
@@ -74,6 +74,8 @@ dependencies {
     implementation(libs.androidx.webkit)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.security.crypto)
+    implementation(libs.mlkit.subject)
+    implementation(libs.play.services.base)
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)

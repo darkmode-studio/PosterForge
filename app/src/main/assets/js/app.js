@@ -841,6 +841,8 @@ canvasWrap.addEventListener('pointerdown', (e) => {
     longPress = null;
     const target = canvas.findTarget(e, false); if (!target) return;
     haptic('heavy');
+    // 2.1: long-press a single photo (not in select mode) = lift the subject, like iOS
+    if (!selectMode && target.type === 'image' && !(prev && prev !== target) && window.PFLift) { window.PFLift(target); return; }
     const a = prev && canvas.getObjects().includes(prev) || (prev && prev.type === 'activeSelection') ? prev : active();
     if (!selectMode) setSelectMode(true);
     if (a && a !== target) {
