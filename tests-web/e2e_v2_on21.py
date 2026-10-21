@@ -54,7 +54,7 @@ async def main():
         await pg.click('#obNext'); await pg.wait_for_timeout(400)
         check('guide finishes and is remembered', await E("()=>!document.getElementById('onboard') && localStorage.getItem('pf.onboarded')==='1'"))
         n=await E("()=>document.querySelectorAll('#tplGrid .tpl-card').length")
-        check('home: template gallery lists all templates', n>=20 and n<=30, n)
+        check('home: template gallery lists all templates', n>=20 and n<=40, n)
         await wait(pg,"document.querySelectorAll('#tplGrid .tpl-card.ready').length>=4", 30000)
         await pg.wait_for_timeout(300)
         await shot(pg, f'{SH}/03-home.png')
@@ -63,10 +63,10 @@ async def main():
         await shot(pg, f'{SH}/04-home-templates.png')
         tc=await E('''async()=>{ const m=await import('./js/v2/templates.js'); const t=m.TEMPLATES; const by={};
           for(const x of t){ by[x.size]=(by[x.size]||0)+1; } return {n:t.length, by, ml:t.filter(x=>x.lang==='ml').length, cats:[...new Set(t.map(x=>x.cat))]} }''')
-        check('templates: 20-30, all three sizes, Malayalam + English', 20<=tc['n']<=30 and len(tc['by'])==3 and tc['ml']>=6, tc)
+        check('templates: 20-40 (36 since 2.2), all three sizes, Malayalam + English', 20<=tc['n']<=40 and len(tc['by'])==3 and tc['ml']>=6, tc)
         await E("()=>{document.querySelector('[data-cat=\"Malayalam\"]').click()}"); await pg.wait_for_timeout(300)
         nm=await E("()=>document.querySelectorAll('#tplGrid .tpl-card').length")
-        check('home: category filter', nm==tc['ml'], nm)
+        check('home: category filter (Malayalam category; the 6 ml lettering templates sit in Lettering)', nm==tc['ml']-6, nm)
         await E("()=>{document.querySelector('[data-cat=\"All\"]').click()}")
         # ---- fonts: catalogue + files + licences ----
         fc=await E('''async()=>{ const t=await import('./js/tools.js'); const C=t.FONT_CATALOG.filter(f=>f.bundled);

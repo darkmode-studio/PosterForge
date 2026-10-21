@@ -20,8 +20,8 @@ android {
         applicationId = "com.sandeep.posterforge"
         minSdk = 24
         targetSdk = 36
-        versionCode = 6
-        versionName = "2.1.1"
+        versionCode = 7
+        versionName = "2.2.0"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 

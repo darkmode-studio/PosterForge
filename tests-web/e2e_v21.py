@@ -337,7 +337,7 @@ async def main():
             const tx=b.pages[0].objects.filter(o=>o.type==='text'); out.push({id:t.id, pages:b.pages.length, has:tx.some(o=>o.text.replace(/\\n/g,' ').toLowerCase().includes('looks beautiful')), author:tx.some(o=>o.pfRole==='author'), counter:tx.some(o=>o.pfRole==='counter')}); }
           const ml=m.TEMPLATES.map(t=>PF21.fillTemplate(t,'സ്നേഹം എല്ലാം മാറ്റും')).map(b=>b.pages[0].objects.filter(o=>o.type==='text').sort((a,c)=>c.fontSize-a.fontSize)[0].fontFamily);
           const tools=await import('./js/tools.js'); return {n:out.length, bad:out.filter(o=>!o.has||!o.author||o.counter||o.pages!==1).map(o=>o.id), mlBad:ml.filter(f=>!tools.fontEntry(f).ml)} }''')
-        check('quick-start fills the quote + author into all 26 templates', ft['n']==26 and not ft['bad'], ft)
+        check('quick-start fills the quote + author into all 36 templates', ft['n']==36 and not ft['bad'], ft)
         check('a Malayalam quote switches every template to a Malayalam font', not ft['mlBad'], ft['mlBad'])
         await E("()=>{ PF21.quoteQuickStart(); }"); await pg.wait_for_timeout(400)
         await shot(pg, f'{SH}/23-quick-start-input.png')
@@ -345,7 +345,7 @@ async def main():
         await wait(pg,"document.querySelectorAll('#quickStart .qs-card.ready').length>=1", 20000)
         await pg.wait_for_timeout(800)
         st=await E("()=>({n:document.querySelectorAll('#quickStart .qs-card').length, c:document.getElementById('qsCount').textContent})")
-        check('quick-start gallery: 26 swipeable previews', st['n']==26 and st['c']=='1 / 26', st)
+        check('quick-start gallery: 36 swipeable previews', st['n']==36 and st['c']=='1 / 36', st)
         await shot(pg, f'{SH}/24-quick-start-gallery.png')
         await E("()=>{ const t=document.getElementById('qsTrack'); t.scrollLeft=t.querySelectorAll('.qs-card')[9].offsetLeft-t.clientWidth*0.09; t.dispatchEvent(new Event('scroll')); }")
         await wait(pg,"document.querySelectorAll('#quickStart .qs-card')[9].classList.contains('ready')",20000); await pg.wait_for_timeout(500)
