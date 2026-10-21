@@ -3,11 +3,41 @@
 /* global fabric */
 const T = fabric.Text.prototype;
 const baseInit = T.initDimensions, baseRender = T._render, baseToSVG = T.toSVG, baseToObject = T.toObject;
-export const WARPS = ['none', 'arc', 'wave', 'circle'];
-const isWarped = (o) => o.pfWarp && o.pfWarp !== 'none' && (o.pfWarp === 'circle' || Number(o.pfWarpAmt));
+export const WARPS = ['none', 'arc', 'wave', 'circle', 'path'];
+const isWarped = (o) => o.pfWarp && o.pfWarp !== 'none' && (o.pfWarp === 'path' ? Array.isArray(o.pfPath) && o.pfPath.length >= 2 : (o.pfWarp === 'circle' || Number(o.pfWarpAmt)));
+/** 2.1 text on a custom path: pfPath = [[x,y],...] normalised so the polyline length is 1; the text's flat width is laid along it. */
+function pathMapper(pts, W) {
+  const P = pts.map(([x, y]) => [x * W, y * W]); const cum = [0];
+  for (let i = 1; i < P.length; i++) cum.push(cum[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
+  const L = cum[cum.length - 1] || 1;
+  const ang = (i) => Math.atan2(P[i + 1][1] - P[i][1], P[i + 1][0] - P[i][0]);
+  return (x) => {
+    const s = Math.max(0, Math.min(L, ((x + W / 2) / W) * L));
+    let i = 1; while (i < cum.length - 1 && cum[i] < s) i++;
+    const seg = cum[i] - cum[i - 1] || 1; const t = (s - cum[i - 1]) / seg;
+    let a = ang(i - 1);
+    // smooth the angle across joints
+    if (t < 0.5 && i > 1) { const a0 = ang(i - 2); let d = a - a0; d = Math.atan2(Math.sin(d), Math.cos(d)); a = a0 + d * (0.5 + t); }
+    else if (t >= 0.5 && i < P.length - 1) { const a1 = ang(i); let d = a1 - a; d = Math.atan2(Math.sin(d), Math.cos(d)); a = a + d * (t - 0.5); }
+    return { x: P[i - 1][0] + (P[i][0] - P[i - 1][0]) * t, y: P[i - 1][1] + (P[i][1] - P[i - 1][1]) * t, a };
+  };
+}
+/** Resamples a drawn polyline to n evenly spaced points, normalised to length 1 and centred. */
+export function normalisePath(raw, n = 40) {
+  const pts = raw.filter((p, i) => i === 0 || Math.hypot(p[0] - raw[i - 1][0], p[1] - raw[i - 1][1]) > 0.5);
+  if (pts.length < 2) return null;
+  const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const L = cum[cum.length - 1]; if (L < 10) return null;
+  const out = []; let j = 1;
+  for (let k = 0; k < n; k++) { const s = (L * k) / (n - 1); while (j < cum.length - 1 && cum[j] < s) j++; const t = (s - cum[j - 1]) / ((cum[j] - cum[j - 1]) || 1);
+    out.push([pts[j - 1][0] + (pts[j][0] - pts[j - 1][0]) * t, pts[j - 1][1] + (pts[j][1] - pts[j - 1][1]) * t]); }
+  const cx = out.reduce((a, p) => a + p[0], 0) / n, cy = out.reduce((a, p) => a + p[1], 0) / n;
+  return { pts: out.map(([x, y]) => [+((x - cx) / L).toFixed(5), +((y - cy) / L).toFixed(5)]), length: L, cx, cy };
+}
 
 // Maps flat x (centered, -W/2..W/2) to { x, y, a } (position of the column's vertical centre, rotation).
 function mapper(o, W, H) {
+  if (o.pfWarp === 'path' && Array.isArray(o.pfPath) && o.pfPath.length >= 2) return pathMapper(o.pfPath, W);
   const amt = Number(o.pfWarpAmt) || 0;
   if (o.pfWarp === 'arc' || o.pfWarp === 'circle') {
     const theta = o.pfWarp === 'circle' ? 2 * Math.PI * 0.97 * (amt < 0 ? -1 : 1) : (amt / 100) * Math.PI * 1.6;

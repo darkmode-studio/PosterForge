@@ -10,7 +10,8 @@ import { hasNative, N, sendBlob, gemini, haptic, geminiModels, defaultModels, me
 const $ = (id) => document.getElementById(id);
 const PROPS = ['name', 'locked', 'pfRole', 'lockMovementX', 'lockMovementY', 'lockScalingX', 'lockScalingY', 'lockRotation', 'hasControls', 'visible',
   'pfOrig', 'pfOrigW', 'pfOrigH', 'pfBase', 'pfFilter', 'pfAlpha', 'pfMask', 'pfFrame', 'pfClipBase', 'pfClipZ', 'pfClipX', 'pfClipY',
-  'pfWarp', 'pfWarpAmt', 'pfFillMode', 'pfGlow', 'pfGeo', 'pfCounterFmt', 'pfTexture', 'pfFontLabel', 'pfGeoBase'];
+  'pfWarp', 'pfWarpAmt', 'pfFillMode', 'pfGlow', 'pfGeo', 'pfCounterFmt', 'pfTexture', 'pfFontLabel', 'pfGeoBase',
+  'pfPath', 'pfAnim', 'pfBox', 'pfBoxText', 'pfOutline', 'pfStory', 'pfAutoContrast', 'pfAutoFx', 'pfSticker'];
 registerFonts();
 /** Font families referenced by a serialised fabric canvas (recurses into groups). */
 function usedFamilies(c) {
@@ -558,7 +559,12 @@ function syncEditPanel() {
   const sc = toHex(o.stroke); if (sc) $('strokeColorPicker').value = sc;
   $('strokeRange').value = o.strokeWidth || 0; $('strokeVal').textContent = (o.strokeWidth || 0) + 'px';
   $('opacityRange').value = Math.round((o.opacity ?? 1) * 100); $('opacityVal').textContent = Math.round((o.opacity ?? 1) * 100) + '%';
-  if (o.shadow) { $('shadowBlur').value = o.shadow.blur; $('shadowOffset').value = o.shadow.offsetY; }
+  if (o.shadow) { $('shadowBlur').value = o.shadow.blur; $('shadowOffset').value = Math.round(Math.hypot(o.shadow.offsetX || 0, o.shadow.offsetY || 0));
+    $('shadowAngle').value = Math.round(((Math.atan2(o.shadow.offsetY || 0, o.shadow.offsetX || 0) * 180) / Math.PI + 360) % 360) || 90;
+    const m = String(o.shadow.color || '').match(/rgba?\(\s*(\d+)[ ,]+(\d+)[ ,]+(\d+)(?:[ ,/]+([\d.]+))?/);
+    if (m) { $('shadowColor').value = '#' + [m[1], m[2], m[3]].map((v) => Number(v).toString(16).padStart(2, '0')).join(''); $('shadowOpacity').value = Math.round((m[4] ? Number(m[4]) : 1) * 100); }
+    else if (/^#/.test(o.shadow.color || '')) $('shadowColor').value = o.shadow.color.slice(0, 7); }
+  $('shadowAngleVal').textContent = $('shadowAngle').value + '°'; $('shadowOpacityVal').textContent = $('shadowOpacity').value + '%';
   $('shadowBlurVal').textContent = $('shadowBlur').value; $('shadowOffsetVal').textContent = $('shadowOffset').value;
   $('btnLockObj').textContent = o.locked ? 'Unlock' : 'Lock';
   if (currentPane === 'position') syncPosition();
@@ -744,10 +750,14 @@ $('btnFront').onclick = () => { const o = active(); if (!o) return; canvas.bring
 $('btnBack').onclick = () => { const o = active(); if (!o) return; canvas.sendToBack(o); history.record(); };
 $('btnLockObj').onclick = () => { const o = active(); if (!o) return; setLocked(o, !o.locked); canvas.requestRenderAll(); history.record(); syncEditPanel(); };
 
-const shadowOf = () => new fabric.Shadow({ color: 'rgba(0,0,0,0.6)', blur: Number($('shadowBlur').value), offsetX: 0, offsetY: Number($('shadowOffset').value) });
+const shadowOf = () => {
+  const hex = ($('shadowColor')?.value || '#000000').slice(1); const a = Number($('shadowOpacity')?.value ?? 60) / 100;
+  const rgb = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16)); const ang = (Number($('shadowAngle')?.value ?? 90) * Math.PI) / 180; const d = Number($('shadowOffset').value);
+  return new fabric.Shadow({ color: `rgba(${rgb.join(',')},${a})`, blur: Number($('shadowBlur').value), offsetX: Math.round(Math.cos(ang) * d), offsetY: Math.round(Math.sin(ang) * d) });
+};
 $('btnShadow').onclick = () => { const o = active(); if (!o) return; o.set('shadow', o.shadow ? null : shadowOf()); o.dirty = true; canvas.requestRenderAll(); history.record(); };
-['shadowBlur', 'shadowOffset'].forEach((id) => {
-  $(id).addEventListener('input', () => { const o = active(); $(id + 'Val').textContent = $(id).value; if (!o) return; o.set('shadow', shadowOf()); o.dirty = true; canvas.requestRenderAll(); history.recordSoon(500); });
+['shadowBlur', 'shadowOffset', 'shadowAngle', 'shadowOpacity', 'shadowColor'].forEach((id) => {
+  $(id).addEventListener('input', () => { const o = active(); const vl = $(id + 'Val'); if (vl) vl.textContent = $(id).value + ({ shadowAngle: '°', shadowOpacity: '%' }[id] || ''); if (!o) return; o.set('shadow', shadowOf()); o.dirty = true; canvas.requestRenderAll(); history.recordSoon(500); });
   $(id).addEventListener('change', () => history.record());
 });
 $('btnDuplicate').onclick = () => { const o = active(); if (o) duplicateObj(o); };
@@ -1512,7 +1522,8 @@ function buildSizePane() {
   const wI = el('input', { type: 'number', value: String(state.W), min: '200', max: '6000', 'aria-label': 'Width' });
   const hI = el('input', { type: 'number', value: String(state.H), min: '200', max: '6000', 'aria-label': 'Height' });
   const chk = el('input', { type: 'checkbox', checked: true, onchange: (e) => (scaleContent = e.target.checked) });
-  pane.replaceChildren(list, el('div', { class: 'row' }, wI, el('span', { text: '×' }), hI,
+  pane.replaceChildren(el('button', { class: 'btn-accent rip', id: 'btnAllSizes', style: 'width:100%;margin-bottom:8px', text: 'All sizes · Instagram, YouTube, WhatsApp, print, custom', onclick: () => window.PFSizes?.openSizes().then(() => buildSizePane()) }),
+    list, el('div', { class: 'row' }, wI, el('span', { text: '×' }), hI,
     el('button', { class: 'btn-filled rip', text: 'Apply', onclick: () => { const w = Math.round(+wI.value), h = Math.round(+hI.value); if (!(w >= 200 && w <= 6000 && h >= 200 && h <= 6000)) return toast('Size must be 200–6000 px', 'error'); setArtboard(w, h, scaleContent).then(buildSizePane); } })),
     el('label', { class: 'row note' }, chk, el('span', { text: 'Scale and re-centre existing items' })));
 }

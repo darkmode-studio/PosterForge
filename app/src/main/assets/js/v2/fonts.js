@@ -1,7 +1,7 @@
 // Font picker (live preview, favourites, filters, family expansion), font import (TTF/OTF/ZIP) and My Fonts.
 /* global fabric */
 import { FONT_CATALOG, FONT_GROUPS, MALAYALAM_RE, addCatalogEntry, removeCatalogEntry, fontEntry, hasFace } from '../tools.js';
-import { el, sheet, toast, busy, promptSheet, menuSheet, confirmSheet } from '../ui.js';
+import { el, sheet, toast, busy, promptSheet, menuSheet, confirmSheet, closeTopSheet } from '../ui.js';
 import { saveUserFont, getAllUserFonts, deleteUserFont } from '../db.js';
 import { haptic } from '../native.js';
 import { parseFont, unzip, weightName } from './fontfile.js';
@@ -99,7 +99,7 @@ const io = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserve
 
 export async function openFontPicker(opts = {}) {
   const pf = PF(); const o = opts.target || pf.active();
-  const isTxt = pf.isText(o);
+  const isTxt = !opts.pick && pf.isText(o); let picked = null;
   const orig = isTxt ? { fontFamily: o.fontFamily, fontWeight: o.fontWeight, fontStyle: o.fontStyle } : null;
   const txt = isTxt ? o.text.replace(/\s+/g, ' ').trim() : '';
   const textIsMl = MALAYALAM_RE.test(txt);
@@ -115,6 +115,7 @@ export async function openFontPicker(opts = {}) {
     return f.ml ? `${ML_SAMPLE} · Aa` : EN_SAMPLE;
   };
   const apply = async (f, face) => {
+    if (opts.pick) { picked = f.family; closeTopSheet(); return; }
     if (!isTxt) return;
     if (textIsMl && !f.ml) { toast(`${labelOf(f)} has no Malayalam letters`, 'error'); return; }
     const w = face ? (face.variable ? 400 : face.w) : (Number(o.fontWeight) >= 600 ? (f.faces.some((x) => x.w >= 600 || x.variable) ? Math.max(...f.faces.filter((x) => !x.italic).map((x) => (x.variable ? Math.min(700, x.w2) : x.w))) : 700) : (f.faces.some((x) => x.w === 400 && !x.italic) ? 400 : f.faces[0].w));
@@ -173,8 +174,9 @@ export async function openFontPicker(opts = {}) {
   });
   render();
   const body = el('div', { class: 'fp' }, search, chips, list);
-  const v = await sheet({ title: isTxt ? 'Fonts' : 'Fonts (select a text to apply)', body, onOpen: (box) => box.classList.add('sheet-tall'),
+  const v = await sheet({ title: opts.pick ? 'Pick a font' : isTxt ? 'Fonts' : 'Fonts (select a text to apply)', body, onOpen: (box) => box.classList.add('sheet-tall'),
     actions: isTxt ? [{ label: 'Cancel', value: 'cancel', kind: 'btn-ghost' }, { label: 'Done', value: 'done', kind: 'btn-accent' }] : [{ label: 'Close', value: null, kind: 'btn-ghost' }] });
+  if (opts.pick) return picked;
   if (!isTxt) return v;
   const changed = o.fontFamily !== orig.fontFamily || o.fontWeight !== orig.fontWeight || o.fontStyle !== orig.fontStyle;
   if (v !== 'done' && changed) { const c = o.getCenterPoint(); o.set(orig); o.initDimensions(); o.setPositionByOrigin(c, 'center', 'center'); o.setCoords(); pf.canvas.requestRenderAll(); }

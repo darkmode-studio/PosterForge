@@ -65,15 +65,22 @@ export async function newPosterFlow(w, h) {
 }
 export async function openTemplate(id) {
   const t = TEMPLATES.find((x) => x.id === id); if (!t) return;
-  if (!(await confirmReplace())) return;
+  const b = t.build(); if (window.PFBrand?.autoOn?.()) await window.PFBrand.applyKitToBuilt(b);
+  return openBuilt(b, t.name);
+}
+/** Opens an already-built template { w, h, pages } (used by templates, quote quick-start and the brand kit). */
+export async function openBuilt(built, name) {
+  const t = { name };
+  if (!(await confirmReplace())) return false;
   const pf = PF(); busy('Opening template…');
   try {
-    const b = t.build(); const st = b.pages.length > 1 ? { v: 2, w: b.w, h: b.h, page: 0, pages: b.pages, canvas: b.pages[0] } : { v: 1, w: b.w, h: b.h, canvas: b.pages[0] };
+    const b = built; const st = b.pages.length > 1 ? { v: 2, w: b.w, h: b.h, page: 0, pages: b.pages, canvas: b.pages[0] } : { v: 1, w: b.w, h: b.h, canvas: b.pages[0] };
     await pf.history.mute(() => pf.restoreProject(st));
     pf.state.projectId = null; pf.state.projectName = t.name; pf.state.zoom = 1; pf.state.panX = pf.state.panY = 0;
     window.PFPages.updateCounters(); pf.history.reset(); pf.layout(); hideHome(); haptic('confirm');
     toast(b.pages.length > 1 ? `${b.pages.length}-page carousel: tap the page pill at the top to switch pages` : 'Double-tap the text to write your own words');
-  } catch (e) { toast('Template failed: ' + e.message, 'error'); } finally { busy(); }
+    return true;
+  } catch (e) { toast('Template failed: ' + e.message, 'error'); return false; } finally { busy(); }
 }
 async function openProject(id) {
   if (!(await confirmReplace())) return;
