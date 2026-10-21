@@ -25,8 +25,8 @@ class SubjectLiftTest {
     }
     /** fake engine: keeps a rectangle as the "subject" */
     private val rectSeg = SubjectLift.Segmenter { src ->
-        val o = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888); o.eraseColor(Color.TRANSPARENT)
-        for (y in 30 until 70) for (x in 20 until 60) o.setPixel(x, y, Color.RED); o }
+        val m = FloatArray(src.width * src.height)
+        for (y in 30 until 70) for (x in 20 until 60) m[y * src.width + x] = 0.97f; m }
 
     @Test fun alphaBoundsFindsSubject() {
         val b = Bitmap.createBitmap(50, 40, Bitmap.Config.ARGB_8888); b.eraseColor(Color.TRANSPARENT)
@@ -49,8 +49,11 @@ class SubjectLiftTest {
         val dir = File(ctx.cacheDir, "jobs-test")
         val none = SubjectLift.run(png(60, 60), 2048, dir) { null }
         assertFalse(none.getBoolean("ok")); assertEquals("no_subject", none.getString("code"))
-        val empty = SubjectLift.run(png(60, 60), 2048, dir) { s -> Bitmap.createBitmap(s.width, s.height, Bitmap.Config.ARGB_8888) }
+        val empty = SubjectLift.run(png(60, 60), 2048, dir) { s -> FloatArray(s.width * s.height) }
         assertEquals("no_subject", empty.getString("code"))
+        // a mask that keeps the whole photo must not produce a duplicate layer
+        val whole = SubjectLift.run(png(60, 60), 2048, dir) { s -> FloatArray(s.width * s.height) { 1f } }
+        assertFalse(whole.getBoolean("ok")); assertEquals("no_subject", whole.getString("code"))
         val gps = SubjectLift.run(png(60, 60), 2048, dir) { throw SubjectLift.Unavailable("no_play_services", "needs Play services") }
         assertEquals("no_play_services", gps.getString("code")); assertEquals("needs Play services", gps.getString("error"))
         val bad = SubjectLift.run(byteArrayOf(1, 2, 3), 2048, dir, rectSeg)
@@ -58,7 +61,7 @@ class SubjectLiftTest {
     }
 
     @Test fun runScalesBigPhotosDown() {
-        val r = SubjectLift.run(png(3000, 1500), 1000, File(ctx.cacheDir, "jobs-test")) { s -> assertTrue(s.width <= 1000); rectSeg.foreground(s) }
+        val r = SubjectLift.run(png(3000, 1500), 1000, File(ctx.cacheDir, "jobs-test")) { s -> assertTrue(s.width <= 1000); rectSeg.mask(s) }
         assertEquals(1000, r.getInt("srcW")); assertEquals(500, r.getInt("srcH"))
     }
 
@@ -92,5 +95,39 @@ class SubjectLiftTest {
         val r = SubjectLift.pasteFromClipboard(ctx, File(ctx.cacheDir, "jobs-test"))
         assertTrue(r.toString(), r.getBoolean("ok")); assertEquals(32, r.getInt("w")); assertEquals(16, r.getInt("h"))
         assertTrue(File(ctx.cacheDir, "jobs-test/" + r.getString("file")).exists())
+    }
+
+    @Test fun maskToAlphaAppliesConfidence() {
+        val px = intArrayOf(0xFF102030.toInt(), 0xFF405060.toInt(), 0xFF708090.toInt(), 0xFFA0B0C0.toInt(), 0xFFFFFFFF.toInt())
+        val out = SubjectLift.maskToAlpha(px, floatArrayOf(0f, 0.2f, 0.5f, 0.9f, Float.NaN))
+        assertEquals(0, out[0]); assertEquals(0, out[1]); assertEquals(0, out[4])          // background -> fully transparent
+        assertEquals(128, out[2] ushr 24); assertEquals(0x708090, out[2] and 0xFFFFFF)       // soft edge keeps colour
+        assertEquals(0xFFA0B0C0.toInt(), out[3])                                            // subject stays opaque, unchanged
+    }
+
+    @Test fun maskToAlphaRejectsShortMask() {
+        try { SubjectLift.maskToAlpha(IntArray(4), FloatArray(3)); fail("expected") } catch (_: IllegalArgumentException) {}
+    }
+
+    @Test fun alphaBoundsOnArrayAndTransparentShare() {
+        val px = IntArray(10 * 8); px[2 * 10 + 3] = 0xFF000000.toInt(); px[5 * 10 + 7] = 0x80000000.toInt()
+        assertEquals(SubjectLift.Box(3, 2, 5, 4), SubjectLift.alphaBounds(px, 10, 8))
+        assertNull(SubjectLift.alphaBounds(IntArray(6), 3, 2))
+        assertEquals(78f / 80f, SubjectLift.transparentShare(px), 1e-6f)
+    }
+
+    @Test fun liftedPngIsTransparentOutsideTheSubject() {
+        // opaque photo (no alpha channel) like a camera JPEG: the cutout must still carry real transparency
+        val src = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888); src.eraseColor(Color.BLUE); src.setHasAlpha(false)
+        val bytes = ByteArrayOutputStream().also { src.compress(Bitmap.CompressFormat.JPEG, 95, it) }.toByteArray()
+        val seg = SubjectLift.Segmenter { s -> FloatArray(s.width * s.height) { i -> val x = i % s.width; val y = i / s.width; if ((x - 50) * (x - 50) + (y - 50) * (y - 50) < 400) 1f else 0f } }
+        val dir = File(ctx.cacheDir, "jobs-test"); val r = SubjectLift.run(bytes, 2048, dir, seg)
+        assertTrue(r.toString(), r.getBoolean("ok"))
+        val out = BitmapFactory.decodeFile(File(dir, r.getString("file")).absolutePath)
+        assertTrue(out.hasAlpha())
+        assertEquals(0, Color.alpha(out.getPixel(0, 0)))                         // corner of the box = background, cut away
+        assertEquals(255, Color.alpha(out.getPixel(out.width / 2, out.height / 2)))
+        assertTrue(Color.blue(out.getPixel(out.width / 2, out.height / 2)) > 200)  // subject keeps the photo colour
+        assertTrue(out.width < 100 && out.height < 100)
     }
 }

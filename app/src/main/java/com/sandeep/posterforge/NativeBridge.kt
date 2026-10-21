@@ -137,7 +137,7 @@ class NativeBridge(private val activity: MainActivity, private val webView: WebV
 
     // ---- 2.1 subject lift + image clipboard ----
     /** Swappable for tests. Real engine: on-device ML Kit Subject Segmentation via Play services. */
-    internal var segmenter: SubjectLift.Segmenter = SubjectLift.Segmenter { MlKitSegmenter(activity).foreground(it) }
+    internal var segmenter: SubjectLift.Segmenter = SubjectLift.Segmenter { MlKitSegmenter(activity).mask(it) }
     @JavascriptInterface fun subjectInfo(): String = JSONObject().put("playServices", MlKitSegmenter.playServicesOk(activity)).toString()
     /** Reads an image from the system clipboard -> { ok, url, w, h } | { ok:false, code, error } via __pfNativeCb. */
     @JavascriptInterface

@@ -15,9 +15,9 @@ import java.util.concurrent.TimeUnit
 
 /** On-device ML Kit Subject Segmentation. The model is delivered by Google Play services (downloaded once, then offline). */
 class MlKitSegmenter(private val ctx: Context) : SubjectLift.Segmenter {
-    override fun foreground(src: Bitmap): Bitmap? {
+    override fun mask(src: Bitmap): FloatArray? {
         if (!playServicesOk(ctx)) throw SubjectLift.Unavailable("no_play_services", "Subject lift needs Google Play services, which this phone does not have")
-        val seg = SubjectSegmentation.getClient(SubjectSegmenterOptions.Builder().enableForegroundBitmap().build())
+        val seg = SubjectSegmentation.getClient(SubjectSegmenterOptions.Builder().enableForegroundConfidenceMask().build())
         try {
             // make sure the model module is installed (first use downloads ~5-10 MB through Play services)
             try {
@@ -36,7 +36,12 @@ class MlKitSegmenter(private val ctx: Context) : SubjectLift.Segmenter {
                     throw SubjectLift.Unavailable("model_downloading", "The subject model is still downloading. Try again in a minute (needs internet once)")
                 throw SubjectLift.Unavailable("unavailable", c?.message ?: "Subject lift is not available on this phone")
             }
-            return res.foregroundBitmap
+            // Confidence mask (one float 0..1 per input pixel). We apply it to the photo ourselves (SubjectLift.maskToAlpha):
+            // the foreground bitmap path produced an opaque full photo on device (alpha dropped for an opaque input bitmap).
+            val buf = res.foregroundConfidenceMask ?: return null
+            buf.rewind(); val n = src.width * src.height
+            if (buf.remaining() < n) return null
+            return FloatArray(n).also { buf.get(it) }
         } finally { seg.close() }
     }
 

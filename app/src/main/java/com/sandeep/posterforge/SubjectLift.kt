@@ -18,8 +18,33 @@ import java.util.UUID
  * Play services; the real engine is [MlKitSegmenter] (on-device ML Kit Subject Segmentation, model via Play services).
  */
 object SubjectLift {
-    /** Returns the subject on a transparent background (same size as the input), or null when no subject was found. */
-    fun interface Segmenter { fun foreground(src: Bitmap): Bitmap? }
+    /** Returns a foreground confidence mask (0..1, one per pixel of [src], row-major), or null when no subject was found. */
+    fun interface Segmenter { fun mask(src: Bitmap): FloatArray? }
+
+    /**
+     * Applies a confidence mask to opaque photo pixels: alpha = smoothstep(lo, hi, confidence) * 255, RGB kept.
+     * Pure function (unit-tested). Pixels are non-premultiplied ARGB ints as from Bitmap.getPixels.
+     */
+    fun maskToAlpha(px: IntArray, mask: FloatArray, lo: Float = 0.35f, hi: Float = 0.65f): IntArray {
+        require(mask.size >= px.size) { "mask is smaller than the image" }
+        val out = IntArray(px.size)
+        for (i in px.indices) {
+            val m = mask[i]; val t = if (m.isNaN()) 0f else ((m - lo) / (hi - lo)).coerceIn(0f, 1f)
+            val a = (t * t * (3 - 2 * t) * 255f + 0.5f).toInt()
+            out[i] = if (a == 0) 0 else (a shl 24) or (px[i] and 0x00FFFFFF)
+        }
+        return out
+    }
+
+    /** Tight box of pixels with alpha > [threshold] in a row-major ARGB array; null when none. */
+    fun alphaBounds(px: IntArray, w: Int, h: Int, threshold: Int = 8): Box? {
+        var x0 = w; var y0 = h; var x1 = -1; var y1 = -1
+        for (y in 0 until h) { val o = y * w; for (x in 0 until w) if ((px[o + x] ushr 24) > threshold) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y } }
+        return if (x1 < 0) null else Box(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
+    }
+
+    /** Share of fully transparent pixels (alpha 0). */
+    fun transparentShare(px: IntArray): Float { var n = 0; for (p in px) if ((p ushr 24) == 0) n++; return if (px.isEmpty()) 0f else n.toFloat() / px.size }
 
     /** Thrown by a segmenter when Play services / the model is missing; [code] is "no_play_services" | "model_downloading" | "unavailable". */
     class Unavailable(val code: String, msg: String) : Exception(msg)
@@ -45,13 +70,21 @@ object SubjectLift {
     fun run(bytes: ByteArray, maxSide: Int, dir: File, seg: Segmenter): JSONObject {
         val d = try { Jobs.decodeScaled(bytes, maxSide) } catch (e: Exception) { return fail("bad_image", e.message ?: "Cannot read photo") }
         val src = d.bitmap
-        val fg = try { seg.foreground(src) } catch (e: Unavailable) { return fail(e.code, e.message ?: e.code) }
+        val mask = try { seg.mask(src) } catch (e: Unavailable) { return fail(e.code, e.message ?: e.code) }
             catch (e: Exception) { return fail("failed", e.message ?: e.javaClass.simpleName) }
-        if (fg == null) return fail("no_subject", "No clear subject found in this photo")
-        val box = alphaBounds(fg) ?: return fail("no_subject", "No clear subject found in this photo")
-        val crop = Bitmap.createBitmap(fg, box.x, box.y, box.w, box.h)
+            ?: return fail("no_subject", "No clear subject found in this photo")
+        val w = src.width; val h = src.height
+        val px = IntArray(w * h); src.getPixels(px, 0, w, 0, 0, w, h)
+        val cut = try { maskToAlpha(px, mask) } catch (e: IllegalArgumentException) { return fail("failed", e.message ?: "bad mask") }
+        // a "cutout" with (almost) no background removed is the whole photo again: report it, never add a duplicate
+        if (transparentShare(cut) < 0.02f) return fail("no_subject", "No clear subject found in this photo")
+        val box = alphaBounds(cut, w, h) ?: return fail("no_subject", "No clear subject found in this photo")
+        val crop = IntArray(box.w * box.h)
+        for (y in 0 until box.h) System.arraycopy(cut, (box.y + y) * w + box.x, crop, y * box.w, box.w)
+        val bmp = Bitmap.createBitmap(box.w, box.h, Bitmap.Config.ARGB_8888)
+        bmp.setHasAlpha(true); bmp.setPixels(crop, 0, box.w, 0, 0, box.w, box.h)
         val name = "j" + UUID.randomUUID().toString().replace("-", "") + ".png"
-        FileOutputStream(File(dir.apply { mkdirs() }, name)).use { crop.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        try { FileOutputStream(File(dir.apply { mkdirs() }, name)).use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) } } finally { bmp.recycle() }
         return JSONObject().put("ok", true).put("file", name).put("w", box.w).put("h", box.h).put("x", box.x).put("y", box.y)
             .put("srcW", src.width).put("srcH", src.height)
     }
