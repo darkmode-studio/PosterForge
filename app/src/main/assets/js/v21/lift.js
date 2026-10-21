@@ -55,7 +55,7 @@ export function glow(o) {
     onComplete: () => { o.set({ shadow: keep || null, scaleX: sx, scaleY: sy }); o.setCoords(); pf.canvas.requestRenderAll(); done(); } }));
 }
 
-export async function liftSubject(src) {
+export async function liftSubject(src, { menu = true } = {}) {
   const pf = PF(); if (!src || src.type !== 'image') return null;
   const n = N();
   if (!n || !hasJobs()) { toast(LIFT_MESSAGES.browser, 'error', 4200); return null; }
@@ -76,7 +76,7 @@ export async function liftSubject(src) {
       pf.canvas.setActiveObject(lay); return lay;
     });
     pt.done?.(); shimmer.remove(); await glow(o); haptic('confirm');
-    liftMenu(o);
+    if (menu) liftMenu(o);
     return o;
   } catch (e) { toast('Subject lift failed: ' + (e.message || e), 'error'); return null; }
   finally { try { pt.done?.(); pt.close?.(); } catch (_) {} shimmer.remove(); }
@@ -112,7 +112,7 @@ export async function pasteImage() {
 }
 export async function saveImage(o, action = 'save') {
   const r = await sendBlob(await layerPNG(o), `posterforge-subject-${Date.now()}.png`, 'image/png', action);
-  if (r.ok && action === 'save') toast('Saved transparent PNG to ' + (r.where || 'Gallery')); else if (!r.ok) toast(r.error || 'Failed', 'error');
+  if (r.ok && action === 'save') { toast('Saved transparent PNG to ' + (r.where || 'Gallery') + ' · added to My stickers'); try { await window.PF22?.stickers.add(await layerPNG(o), 'Cutout'); } catch (_) {} } else if (!r.ok) toast(r.error || 'Failed', 'error');
   return r;
 }
 /** White die-cut sticker border (+ soft shadow) baked around the alpha shape. */

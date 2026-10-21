@@ -154,3 +154,14 @@ scene('sky-clouds.webp', 'balloon-sky', [(560, 640, 300, RED, 1.62)])
 scene('dusk-hills.webp', 'balloon-dusk', [(540, 700, 270, BLUE), (870, 330, 90, RED)])
 scene('misty-mountains.webp', 'balloon-mist', [(540, 860, 230, RED)])
 print('ok', sorted(os.listdir(OUT)))
+
+# muted film grade (lifted blacks, low saturation, warm) for the "text behind subject" template; same grade on the cutout
+def muted(name):
+    for part in ('photo', 'subject'):
+        p = os.path.join(OUT, f'{name}-{part}.webp'); im = Image.open(p).convert('RGBA'); a = np.array(im).astype(float)
+        rgb = a[..., :3]; g = rgb.mean(axis=2, keepdims=True); rgb = g + (rgb - g) * 0.62
+        rgb = 28 + rgb * (226 - 28) / 255; rgb *= np.array([1.04, 1.0, 0.93]); a[..., :3] = np.clip(rgb, 0, 255)
+        out = Image.fromarray(a.astype(np.uint8), 'RGBA')
+        q = os.path.join(OUT, f'{name}-muted-{part}.webp')
+        (out.convert('RGB') if part == 'photo' else out).save(q, 'WEBP', quality=80, method=6)
+muted('balloon-sky')

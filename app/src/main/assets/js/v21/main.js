@@ -62,13 +62,13 @@ $('btnMenu').onclick = async () => {
   const v = await menuSheet('PosterForge', [
     { label: '🏠  Home', value: 'home' }, { label: '📄  New poster', value: 'new' }, { label: '❝  Quote quick-start', value: 'quick' }, { label: '📂  Open project', value: 'open' }, { label: '💾  Save project', value: 'save' }, { label: '🗂  Save a copy', value: 'copy' }, 'hr',
     { label: `🎞  Pages / carousel (${pageCount()})`, value: 'pages' }, { label: `📐  Canvas size (${s.W}×${s.H})`, value: 'size' }, { label: '🎨  Background colour', value: 'bg' },
-    { label: '🔤  Fonts & My Fonts', value: 'fonts' }, { label: '🌈  Smart text colours', value: 'colours' }, { label: '◆  Brand kit', value: 'brand' }, { label: '📋  Paste image', value: 'paste' },
+    { label: '🔤  Fonts & My Fonts', value: 'fonts' }, { label: '🌈  Smart text colours', value: 'colours' }, { label: '◆  Brand kit', value: 'brand' }, { label: '📋  Paste image', value: 'paste' }, { label: '✦  Collage, pop-out, stickers, ratio…', value: 'create22' },
     { label: s.safeZone ? '🛡  Hide safe zone' : '🛡  Show Story/Reel safe zone', value: 'safe' }, 'hr',
     { label: '⬇️  Export (PNG, JPG, PDF, SVG)', value: 'export' }, ...(pano ? [{ label: `🧩  Export panorama slides (${pano})`, value: 'pano' }] : []), { label: '🛟  Backup & restore', value: 'backup' }, { label: '🔍  Fit poster to screen', value: 'fit' },
     { label: '⚙️  Settings & API key', value: 'settings' }, { label: 'ℹ️  About & licences', value: 'about' }, { label: '❔  Quick guide', value: 'guide' },
   ]);
   ({ home: showHome, new: () => $('homeNew').click(), quick: () => quoteQuickStart(), open: PF.openProjectsSheet, save: () => PF.saveProject(false), copy: () => PF.saveProject(true), pages: openPagesSheet, size: () => openSizes(), bg: PF.backgroundSheet,
-    fonts: () => openFontPicker(), colours: () => openSmartColours(), brand: () => openBrandKit(), paste: () => pasteImage(),
+    fonts: () => openFontPicker(), colours: () => openSmartColours(), brand: () => openBrandKit(), paste: () => pasteImage(), create22: () => window.PF22?.menu(),
     safe: async () => { if (s.safeZone) setSafeZone(null); else { const k = await menuSheet('Safe zone', [{ label: 'Story (profile bar + reply box)', value: 'story' }, { label: 'Reel (caption + buttons)', value: 'reel' }, { label: 'Reel cover (grid crops)', value: 'cover' }]); if (k) setSafeZone(k); } },
     export: exportSheetV2, pano: () => exportPanorama(), backup: backupSheet, fit: () => { s.zoom = 1; s.panX = s.panY = 0; PF.layout(); }, settings: PF.settingsSheet, about: aboutSheet, guide: () => runOnboarding(true) })[v]?.();
 };
