@@ -30,10 +30,12 @@ export const STORY_STYLES = [
 export async function applyStoryStyle(o, st) {
   const pf = PF(); if (!pf.isText(o)) return;
   const keep = { fill: o.fill, stroke: o.stroke, strokeWidth: o.strokeWidth, shadow: o.shadow, pfGlow: o.pfGlow, pfFillMode: o.pfFillMode, lineHeight: o.lineHeight, textAlign: o.textAlign, pfWarp: o.pfWarp, pfWarpAmt: o.pfWarpAmt, pfPath: o.pfPath };
-  await applyStyle(o, { fontFamily: st.fontFamily, fontWeight: st.fontWeight, fontStyle: st.fontStyle || 'normal', charSpacing: st.charSpacing || 0, lineHeight: keep.lineHeight });
-  const c = o.getCenterPoint();
-  o.set({ fill: keep.fill, stroke: keep.stroke, strokeWidth: keep.strokeWidth, shadow: keep.shadow, pfGlow: keep.pfGlow, pfFillMode: keep.pfFillMode, textAlign: keep.textAlign, pfStory: st.name });
-  o.initDimensions(); o.setPositionByOrigin(c, 'center', 'center'); o.setCoords(); o.dirty = true; pf.canvas.requestRenderAll(); pf.history.record();
+  await pf.history.batch(async () => { // one undo step
+    await applyStyle(o, { fontFamily: st.fontFamily, fontWeight: st.fontWeight, fontStyle: st.fontStyle || 'normal', charSpacing: st.charSpacing || 0, lineHeight: keep.lineHeight });
+    const c = o.getCenterPoint();
+    o.set({ fill: keep.fill, stroke: keep.stroke, strokeWidth: keep.strokeWidth, shadow: keep.shadow, pfGlow: keep.pfGlow, pfFillMode: keep.pfFillMode, textAlign: keep.textAlign, pfStory: st.name });
+    o.initDimensions(); o.setPositionByOrigin(c, 'center', 'center'); o.setCoords(); o.dirty = true; pf.canvas.requestRenderAll();
+  });
 }
 
 const ANIMS = ['none', 'fade', 'typewriter', 'slide'];
