@@ -91,7 +91,7 @@ export async function openBrandKit() {
       logo = c.toDataURL('image/png'); await setLogo(logo); draw(); });
     body.append(el('h3', { text: 'Logo' }), el('div', { class: 'row bk-logo' }, logo ? el('img', { src: logo, alt: 'Logo', class: 'bk-logo-img checker' }) : el('span', { class: 'note', text: 'No logo yet' }),
       el('button', { class: 'btn-tonal rip', id: 'bkLogoPick', text: logo ? 'Change' : 'Add logo', onclick: () => fileIn.click() }), fileIn,
-      logo ? el('button', { class: 'btn-ghost rip', text: 'Remove', onclick: async () => { logo = null; await setLogo(null); draw(); } }) : null),
+      logo ? el('button', { class: 'btn-tonal rip', text: 'Remove', onclick: async () => { logo = null; await setLogo(null); draw(); } }) : null),
       el('div', { class: 'seg wrap', id: 'bkLogoPos' }, ...[['top-left', '↖'], ['top-right', '↗'], ['bottom-left', '↙'], ['bottom-center', '↓'], ['bottom-right', '↘']].map(([k, l]) =>
         el('button', { class: kit.logoPos === k ? 'on' : '', 'data-pos': k, text: l, onclick: () => { kit.logoPos = k; setKit(kit); draw(); } }))));
   }

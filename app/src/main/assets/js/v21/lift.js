@@ -93,6 +93,7 @@ export async function pasteImage() {
   // keep pasted images in the project (data URL) like imported photos
   const im = await loadImg(url); const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; c.getContext('2d').drawImage(im, 0, 0);
   const o = await pf.addImageFromURL(c.toDataURL('image/png'), 'Pasted image', { width: 0.5 });
+  o.set('pfAlpha', true); pf.canvas.add(o); pf.canvas.setActiveObject(o); pf.canvas.requestRenderAll();
   pf.history.record(); haptic('confirm'); toast('Pasted as a new layer'); return o;
 }
 export async function saveImage(o, action = 'save') {
