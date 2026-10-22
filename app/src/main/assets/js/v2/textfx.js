@@ -77,7 +77,7 @@ function flatCanvas(o, scale) {
   const ctx = c.getContext('2d'); ctx.setTransform(k, 0, 0, k, c.width / 2, c.height / 2);
   const sw = o.width, sh = o.height; o.width = w; o.height = h;
   const shadow = o.shadow; o.shadow = null;
-  try { o._setFillStyles?.(ctx, o); baseRender.call(o, ctx); } finally { o.width = sw; o.height = sh; o.shadow = shadow; }
+  try { baseRender.call(o, ctx); } finally { o.width = sw; o.height = sh; o.shadow = shadow; }
   return { c, k, pad };
 }
 T._render = function (ctx) {
