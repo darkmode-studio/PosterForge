@@ -9,8 +9,9 @@ const editable = (o) => o && !o.locked;
 export function setGeometry(o, { x, y, w, h, angle }) {
   if (!editable(o)) return false;
   if (angle != null && isFinite(angle)) o.rotate(((Number(angle) % 360) + 360) % 360);
-  if (w != null && w > 0) o.scaleX = (o.scaleX < 0 ? -1 : 1) * Number(w) / o.width;
-  if (h != null && h > 0) o.scaleY = (o.scaleY < 0 ? -1 : 1) * Number(h) / o.height;
+  const dim = o._getNonTransformedDimensions ? o._getNonTransformedDimensions() : { x: o.width, y: o.height };
+  if (w != null && w > 0) o.scaleX = Number(w) / dim.x;
+  if (h != null && h > 0) o.scaleY = Number(h) / dim.y;
   o.setCoords();
   const r = o.getBoundingRect(true, true);
   if (x != null && isFinite(x)) o.left += Number(x) - r.left;

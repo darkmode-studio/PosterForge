@@ -4,7 +4,7 @@ from playwright.async_api import async_playwright
 from PIL import Image, ImageDraw
 CSP='--csp' in sys.argv
 URL='http://127.0.0.1:8241/index.html'
-SH='/workspace/posterforge/screenshots-2.1.0/regression-2.0-'+('suite-csp' if CSP else 'suite')
+SH='/workspace/posterforge/screenshots-2.3.0/regression-v2-'+('suite-csp' if CSP else 'suite')
 os.makedirs(SH, exist_ok=True)
 results=[]
 def check(name, ok, info=''):
@@ -32,6 +32,7 @@ async def main():
         b=await p.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox'])
         ctx=await b.new_context(viewport={'width':412,'height':915},device_scale_factor=2.625,is_mobile=True,has_touch=True,bypass_csp=not CSP)
         await ctx.add_init_script(path='mock_native.js')
+        await ctx.add_init_script(script="localStorage.setItem('pf.tour23','1')")
         external=[]; errors=[]
         async def route(r):
             u=r.request.url
@@ -351,6 +352,6 @@ async def main():
         errs=[e for e in errors if 'alphabetical' not in e and 'favicon' not in e]
         check('no JavaScript errors', not errs, errs[:6])
         await b.close()
-    json.dump(results, open(f'/workspace/posterforge/test-results-v2{"-csp" if CSP else ""}-regression-2.1.0.json','w'), indent=1)
+    json.dump(results, open(f'/workspace/posterforge/test-results-v2{"-csp" if CSP else ""}-regression-2.3.0.json','w'), indent=1)
     print(f'\n{sum(r["ok"] for r in results)}/{len(results)} passed')
 asyncio.run(main())

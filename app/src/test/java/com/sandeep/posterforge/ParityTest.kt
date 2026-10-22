@@ -36,4 +36,16 @@ class ParityTest {
         assertEquals(1, ImageOps.hslBands(f.hsl!!).size)
         assertTrue(filterFromJson(JSONObject("{}")).isIdentity)
     }
+    /** 2.3 sharpen: identical to imaging.js sharpenData (vector produced by node on the same 8x4 image). */
+    @Test fun sharpenMatchesJs() {
+        val w = 8; val h = 4; val px = IntArray(w * h)
+        for (y in 0 until h) for (x in 0 until w) px[y * w + x] = (255 shl 24) or ((if (x < 4) 100 else 180) shl 16) or (((x * 30 + y * 10) % 256) shl 8) or 50
+        ImageOps.sharpen(px, w, h, 60, 1)
+        val exp = intArrayOf(100,0,50,100,27,50,100,57,50,76,87,50,204,117,50,180,147,50,180,177,50,180,216,50,100,1,50,100,40,50,100,70,50,76,100,50,204,130,50,180,160,50,180,190,50,180,229,50,100,11,50,100,50,50,100,80,50,76,110,50,204,140,50,180,170,50,180,200,50,180,239,50,100,24,50,100,63,50,100,93,50,76,123,50,204,153,50,180,183,50,180,213,50,180,252,50)
+        for (i in 0 until w * h) {
+            assertEquals("r$i", exp[i * 3], (px[i] shr 16) and 255); assertEquals("g$i", exp[i * 3 + 1], (px[i] shr 8) and 255); assertEquals("b$i", exp[i * 3 + 2], px[i] and 255)
+        }
+        assertEquals(40, filterFromJson(JSONObject("""{"sharpen":40}""")).sharpen)
+        assertFalse(filterFromJson(JSONObject("""{"sharpen":40}""")).isIdentity)
+    }
 }
