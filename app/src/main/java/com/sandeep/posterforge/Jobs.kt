@@ -96,5 +96,5 @@ fun filterFromJson(f: JSONObject): ImageOps.Filter {
     val curve = f.optJSONArray("curve")?.let { a -> (0 until a.length()).mapNotNull { i -> a.optJSONArray(i)?.let { pt -> floatArrayOf(pt.optDouble(0).toFloat(), pt.optDouble(1).toFloat()) } } }?.takeIf { it.size >= 2 }
     val hsl = f.optJSONObject("hsl")?.let { o -> o.keys().asSequence().mapNotNull { k -> o.optJSONArray(k)?.let { v -> k to floatArrayOf(v.optDouble(0, 0.0).toFloat(), v.optDouble(1, 0.0).toFloat(), v.optDouble(2, 0.0).toFloat()) } }.toMap() }
     return ImageOps.Filter(f.optInt("brightness"), f.optInt("contrast"), f.optInt("saturation"), f.optInt("warmth"),
-        f.optInt("blur"), f.optBoolean("grayscale"), f.optBoolean("sepia"), f.optInt("vignette"), curve, hsl, f.optInt("grain"))
+        f.optInt("blur"), f.optBoolean("grayscale"), f.optBoolean("sepia"), f.optInt("vignette"), curve, hsl, f.optInt("grain"), f.optInt("sharpen"))
 }

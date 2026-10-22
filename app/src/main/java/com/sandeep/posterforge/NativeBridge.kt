@@ -81,7 +81,10 @@ class NativeBridge(private val activity: MainActivity, private val webView: WebV
     fun haptic(kind: String) {
         val c = when (kind) {
             "heavy" -> HapticFeedbackConstants.LONG_PRESS
-            "confirm" -> if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.VIRTUAL_KEY
+            "confirm", "success" -> if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.VIRTUAL_KEY
+            "select" -> HapticFeedbackConstants.CLOCK_TICK
+            "snap" -> if (Build.VERSION.SDK_INT >= 34) HapticFeedbackConstants.SEGMENT_FREQUENT_TICK else HapticFeedbackConstants.CLOCK_TICK
+            "reject" -> if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS
             else -> if (Build.VERSION.SDK_INT >= 27) HapticFeedbackConstants.KEYBOARD_TAP else HapticFeedbackConstants.VIRTUAL_KEY
         }
         main.post { webView.performHapticFeedback(c) }

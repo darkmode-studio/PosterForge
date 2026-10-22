@@ -60,9 +60,9 @@ object ImageOps {
     // ---------------- photo filters ----------------
     data class Filter(val brightness: Int = 0, val contrast: Int = 0, val saturation: Int = 0, val warmth: Int = 0,
                       val blur: Int = 0, val grayscale: Boolean = false, val sepia: Boolean = false, val vignette: Int = 0,
-                      val curve: List<FloatArray>? = null, val hsl: Map<String, FloatArray>? = null, val grain: Int = 0) {
+                      val curve: List<FloatArray>? = null, val hsl: Map<String, FloatArray>? = null, val grain: Int = 0, val sharpen: Int = 0) {
         val isIdentity get() = brightness == 0 && contrast == 0 && saturation == 0 && warmth == 0 && blur == 0 && !grayscale && !sepia && vignette == 0 &&
-            curve == null && hsl.isNullOrEmpty() && grain == 0
+            curve == null && hsl.isNullOrEmpty() && grain == 0 && sharpen == 0
     }
 
     // ---- v2 colour tools: identical maths to imaging.js ----
@@ -141,10 +141,24 @@ object ImageOps {
                 out[p] = (px and -0x1000000) or (clamp(r) shl 16) or (clamp(g) shl 8) or clamp(bl)
             }
         }
+        if (f.sharpen > 0) sharpen(out, w, h, f.sharpen, max(1, (max(w, h) / 1600f).roundToInt()))
         val radius = (f.blur * blurScale).roundToInt()
         if (radius > 0) { repeat(3) { boxBlur(out, w, h, radius) }; }
         progress.at(1f)
         return out
+    }
+
+    /** Unsharp mask: px + k * (px - boxBlur(px, r)), one box pass (same maths as imaging.js sharpenData). */
+    fun sharpen(px: IntArray, w: Int, h: Int, amount: Int, r: Int) {
+        val blur = px.copyOf(); boxBlur(blur, w, h, r)
+        val k = amount / 100f * 1.5f
+        for (i in px.indices) {
+            val a = px[i]; val bb = blur[i]
+            val rr = ((a shr 16) and 255) + k * (((a shr 16) and 255) - ((bb shr 16) and 255))
+            val gg = ((a shr 8) and 255) + k * (((a shr 8) and 255) - ((bb shr 8) and 255))
+            val bl = (a and 255) + k * ((a and 255) - (bb and 255))
+            px[i] = (a and -0x1000000) or (clamp(rr) shl 16) or (clamp(gg) shl 8) or clamp(bl)
+        }
     }
 
     private fun clamp(v: Float) = if (v < 0f) 0 else if (v > 255f) 255 else v.toInt()

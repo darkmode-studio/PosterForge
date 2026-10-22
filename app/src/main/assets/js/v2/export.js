@@ -8,7 +8,7 @@ import { goTo, snapshot, pageCount } from './pages.js';
 const PF = () => window.PF;
 export const SIZE_PRESETS = [
   { id: 'x1', label: '1×', scale: 1 }, { id: 'x2', label: '2×', scale: 2 }, { id: 'x3', label: '3×', scale: 3 }, { id: 'x4', label: '4×', scale: 4 },
-  { id: 'ig', label: 'Instagram (1080 wide)', width: 1080 }, { id: 'hd', label: 'Full HD (1920 long side)', long: 1920 }, { id: 'print', label: 'Print 300 dpi A4', long: 3508 },
+  { id: 'ig', label: 'Instagram (1080 wide)', width: 1080 }, { id: 'hd', label: 'Full HD (1920 long side)', long: 1920 }, { id: 'print', label: 'Print 300 dpi A4', long: 3508 }, { id: '4k', label: '4K (3840 long side)', long: 3840 },
 ];
 export function presetScale(p, W, H) { if (p.scale) return p.scale; if (p.width) return p.width / W; if (p.long) return p.long / Math.max(W, H); return 1; }
 
@@ -85,8 +85,8 @@ export async function exportPDF({ scale, bleedMm = 3, marks = true, quality = 0.
 }
 
 async function exportOne({ kind, scale, quality, action, name, onProgress }) {
-  const pf = PF(); const mime = kind === 'jpg' ? 'image/jpeg' : kind === 'svg' ? 'image/svg+xml' : 'image/png'; const transparent = kind === 'tpng';
-  if (kind !== 'svg' && hasNativeExport() && !transparent) return pf.exportTiled({ scale, mime, name, action, onProgress, quality: Math.round(quality * 100) });
+  const pf = PF(); const mime = kind === 'jpg' ? 'image/jpeg' : kind === 'webp' ? 'image/webp' : kind === 'svg' ? 'image/svg+xml' : 'image/png'; const transparent = kind === 'tpng';
+  if (kind !== 'svg' && kind !== 'webp' && hasNativeExport() && !transparent) return pf.exportTiled({ scale, mime, name, action, onProgress, quality: Math.round(quality * 100) });
   const blob = kind === 'svg' ? await pf.exportSVGBlob() : await pf.exportPNGBlob(scale, mime, quality, { transparent });
   return sendBlob(blob, name, mime, action);
 }
@@ -127,11 +127,11 @@ export async function exportSheetV2() {
     const low = kind === 'svg' ? [] : lowResImages(scale);
     box.replaceChildren(
       el('label', { class: 'small', text: 'Format' }),
-      el('div', { class: 'seg wrap', id: 'expKind' }, ...[['png', 'PNG'], ['tpng', 'Transparent PNG'], ['jpg', 'JPG'], ['pdf', 'Print PDF'], ['svg', 'SVG']].map(([k, l]) => el('button', { class: k === kind ? 'on' : '', 'data-kind': k, text: l, onclick: () => { kind = k; draw(); } }))),
+      el('div', { class: 'seg wrap', id: 'expKind' }, ...[['png', 'PNG'], ['tpng', 'Transparent PNG'], ['jpg', 'JPG'], ['webp', 'WebP'], ['pdf', 'Print PDF'], ['svg', 'SVG']].map(([k, l]) => el('button', { class: k === kind ? 'on' : '', 'data-kind': k, text: l, onclick: () => { kind = k; draw(); } }))),
       ...(kind === 'svg' ? [] : [el('label', { class: 'small', text: 'Size' }), el('div', { class: 'seg wrap', id: 'expSize' }, ...SIZE_PRESETS.map((x) => { const sc = presetScale(x, s.W, s.H); const ok = kind === 'pdf' || pf.fitsBudget(sc);
         return el('button', { class: x.id === preset ? 'on' : '', 'data-preset': x.id, disabled: ok ? undefined : 'true', text: `${x.label}`, title: `${Math.round(s.W * sc)}×${Math.round(s.H * sc)}`, onclick: () => { if (ok) { preset = x.id; draw(); } } }); })),
         el('p', { class: 'note', id: 'expDims', text: `Output ${Math.round(s.W * scale)} × ${Math.round(s.H * scale)} px${kind === 'pdf' ? ` · ${(s.W * scale / 300 * 25.4).toFixed(0)} × ${(s.H * scale / 300 * 25.4).toFixed(0)} mm at 300 dpi` : ''}` })]),
-      ...(kind === 'jpg' || kind === 'pdf' ? [el('div', { class: 'slider-row' }, el('span', { class: 'lbl', text: 'Quality' }), (() => { const i = el('input', { type: 'range', id: 'expQuality', min: 50, max: 100, value: quality }); i.oninput = () => { quality = Number(i.value); i.nextSibling.textContent = quality; }; return i; })(), el('span', { class: 'val', text: String(quality) }))] : []),
+      ...(kind === 'jpg' || kind === 'webp' || kind === 'pdf' ? [el('div', { class: 'slider-row' }, el('span', { class: 'lbl', text: 'Quality' }), (() => { const i = el('input', { type: 'range', id: 'expQuality', min: 50, max: 100, value: quality }); i.oninput = () => { quality = Number(i.value); i.nextSibling.textContent = quality; }; return i; })(), el('span', { class: 'val', text: String(quality) }))] : []),
       ...(kind === 'pdf' ? [el('label', { class: 'small', text: 'Bleed' }), el('div', { class: 'seg', id: 'expBleed' }, ...[0, 3, 5].map((b) => el('button', { class: b === bleed ? 'on' : '', 'data-bleed': String(b), text: b ? `${b} mm` : 'None', onclick: () => { bleed = b; draw(); } }))),
         el('label', { class: 'row note' }, (() => { const c = el('input', { type: 'checkbox', id: 'expMarks' }); c.checked = marks; c.onchange = () => { marks = c.checked; }; return c; })(), ' Crop marks')] : []),
       ...(kind === 'tpng' ? [el('p', { class: 'note', text: 'The background colour and background photo are left out, so the PNG keeps transparency.' })] : []),

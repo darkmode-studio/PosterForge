@@ -980,12 +980,12 @@ function setBlend(mode) {
 }
 
 // ---------- photo adjustments (native, background thread) ----------
-const FILTER_SLIDERS = { brightness: 'fBrightness', contrast: 'fContrast', saturation: 'fSaturation', warmth: 'fWarmth', blur: 'fBlur', vignette: 'fVignette' };
+const FILTER_SLIDERS = { brightness: 'fBrightness', contrast: 'fContrast', saturation: 'fSaturation', warmth: 'fWarmth', blur: 'fBlur', vignette: 'fVignette', sharpen: 'fSharpen', grain: 'fGrain' };
 const FILTER_PRESETS = [['Original', {}], ['Vivid', { contrast: 15, saturation: 35 }], ['B&W', { grayscale: true, contrast: 10 }], ['Sepia', { sepia: true }],
   ['Warm', { warmth: 25, saturation: 10 }], ['Cool', { warmth: -25 }], ['Fade', { contrast: -25, brightness: 8, saturation: -20 }], ['Dream', { blur: 2, brightness: 6, vignette: 30 }]];
 const filterOf = (o) => { try { return JSON.parse((o && o.pfFilter) || '{}') || {}; } catch (_) { return {}; } };
 let filterFlags = {};
-function readFilterSliders() { const cur = filterOf(active()); const f = { ...filterFlags }; for (const k of ['curve', 'hsl', 'grain']) if (cur[k]) f[k] = cur[k]; for (const [k, id] of Object.entries(FILTER_SLIDERS)) { const v = Number($(id).value); if (v) f[k] = v; } return f; }
+function readFilterSliders() { const cur = filterOf(active()); const f = { ...filterFlags }; for (const k of ['curve', 'hsl']) if (cur[k]) f[k] = cur[k]; for (const [k, id] of Object.entries(FILTER_SLIDERS)) { const v = Number($(id).value); if (v) f[k] = v; } return f; }
 function setImageSrc(o, url) {
   return new Promise((res) => { const w = o.width, h = o.height; o.setSrc(url, () => { o.set({ width: w, height: h }); o.dirty = true; if (o.group) o.group.dirty = true; o.setCoords(); canvas.requestRenderAll(); res(); }); });
 }

@@ -41,10 +41,26 @@ export function filterCanvas(src, f, blurScale = 1) {
     if (grain > 0) { const n = grainNoise((x / cell) | 0, (y / cell) | 0) * grain; r += n; g += n; bl += n; }
     d[i] = r; d[i + 1] = g; d[i + 2] = bl;
   }
+  if (f.sharpen > 0) sharpenData(d, w, h, f.sharpen, cell);
   ctx.putImageData(id, 0, 0);
   const rad = Math.round((f.blur || 0) * blurScale);
   if (rad > 0) { const t = document.createElement('canvas'); t.width = w; t.height = h; const tc = t.getContext('2d'); tc.filter = `blur(${rad * 1.6}px)`; tc.drawImage(out, 0, 0); return t; }
   return out;
+}
+/** Unsharp mask, identical to ImageOps.sharpen in Kotlin (one separable box-blur pass, integer division). */
+export function sharpenData(d, w, h, amount, r) {
+  const n = w * h, bl = new Uint8ClampedArray(d), tmp = new Uint8ClampedArray(d.length), win = 2 * r + 1;
+  const pass = (src, dst, horiz) => {
+    const len = horiz ? w : h, lines = horiz ? h : w;
+    const idx = (line, i) => { const k = i < 0 ? 0 : i >= len ? len - 1 : i; return (horiz ? line * w + k : k * w + line) * 4; };
+    for (let line = 0; line < lines; line++) for (let ch = 0; ch < 4; ch++) {
+      let s = 0; for (let i = -r; i <= r; i++) s += src[idx(line, i) + ch];
+      for (let i = 0; i < len; i++) { dst[idx(line, i) + ch] = (s / win) | 0; s += src[idx(line, i + r + 1) + ch] - src[idx(line, i - r) + ch]; }
+    }
+  };
+  pass(bl, tmp, true); pass(tmp, bl, false);
+  const k = amount / 100 * 1.5;
+  for (let i = 0; i < n * 4; i += 4) for (let c = 0; c < 3; c++) d[i + c] = clamp255(d[i + c] + k * (d[i + c] - bl[i + c]));
 }
 // ---- v2 colour tools (kept identical to ImageOps.kt) ----
 const clamp255 = (v) => (v < 0 ? 0 : v > 255 ? 255 : v | 0);
