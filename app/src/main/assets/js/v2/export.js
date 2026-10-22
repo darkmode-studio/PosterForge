@@ -94,6 +94,7 @@ export async function runExport({ kind, scale, quality = 0.92, action = 'save', 
   const pf = PF(); const s = pf.state; pf.canvas.discardActiveObject(); pf.canvas.requestRenderAll();
   if (kind !== 'svg' && kind !== 'pdf' && !pf.fitsBudget(scale)) { toast('That size is too large for this device’s memory', 'error'); return { ok: false, error: 'budget' }; }
   const n = allPages ? pageCount() : 1; const stamp = pf.stamp();
+  if (n > 1 && kind !== 'pdf' && kind !== 'svg' && window.PFBatchExport) return runBatch({ kind, scale, quality, action, n });
   const pt = progressTask(kind === 'pdf' ? 'Building print PDF…' : `Exporting ${n > 1 ? n + ' pages' : Math.round(s.W * scale) + ' × ' + Math.round(s.H * scale)}…`);
   const results = [];
   try {
@@ -117,6 +118,24 @@ export async function runExport({ kind, scale, quality = 0.92, action = 'save', 
   finally { pt.done(); }
 }
 
+// 2.3.2: carousel pages render offscreen one by one (editor stays on its page), with a progress bar and Cancel.
+async function runBatch({ kind, scale, quality, action, n }) {
+  const ac = new AbortController(); const s = PF().state;
+  const pt = progressTask(`Exporting ${n} slides…`, { onCancel: () => ac.abort() });
+  pt.item?.classList.add('pf-batch');
+  const ext = kind === 'tpng' ? 'png' : kind; const results = [];
+  try {
+    await window.PFBatchExport.exportAll({ format: ext, scale, quality, transparent: kind === 'tpng', signal: ac.signal,
+      onProgress: (d, t) => { pt.set(d / t); pt.label(`Exporting slide ${Math.min(d + 1, t)} of ${t}…`); },
+      onPage: async (i, it) => { const r = await sendBlob(it.blob, it.name, it.mime, action === 'share' ? 'save' : action); results.push(r); return r; } });
+    const bad = results.find((r) => !r.ok);
+    if (bad) toast('Export failed: ' + bad.error, 'error'); else { haptic('confirm'); toast(`Saved ${results.length} slides · ${Math.round(s.W * scale)} × ${Math.round(s.H * scale)}`); }
+    return { ok: !bad, results };
+  } catch (e) {
+    if (e.name === 'AbortError') { toast(`Export cancelled · ${results.length} of ${n} slides saved`); return { ok: false, cancelled: true, results }; }
+    toast('Export failed: ' + e.message, 'error'); return { ok: false, error: e.message, results };
+  } finally { pt.done(); }
+}
 export async function exportSheetV2() {
   const pf = PF(); const s = pf.state;
   let kind = localStorage.getItem('pf.exp.kind') || 'png', preset = localStorage.getItem('pf.exp.preset') || 'x2', quality = Number(localStorage.getItem('pf.exp.q') || 92), all = pageCount() > 1;

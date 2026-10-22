@@ -140,5 +140,6 @@ export function progressTask(label, { onCancel } = {}) {
     set(f) { const v = Math.max(0, Math.min(1, f || 0)); bar.style.width = (v * 100).toFixed(1) + '%'; pct.textContent = Math.round(v * 100) + '%'; item.dataset.progress = v.toFixed(3); },
     label(t) { txt.textContent = t; },
     done() { item.remove(); },
+    item,
   };
 }

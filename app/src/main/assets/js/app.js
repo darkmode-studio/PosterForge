@@ -492,6 +492,7 @@ async function layerMenu(o) {
 function refreshLayers() {
   const list = $('layerList');
   if (!list || currentPane !== 'layers') return; // only rebuilt while visible (thumbnails are not free)
+  if (window.PFLayerPanel && window.PFLayerPanel.refresh(list)) return; // 2.3.2 layer panel
   list.replaceChildren();
   const objs = canvas.getObjects();
   if (!objs.length) { list.append(el('li', { class: 'empty', text: 'Nothing on the poster yet. Add text, photos or shapes from the toolbar.' })); return; }
@@ -1302,8 +1303,8 @@ async function useOriginals(json, scale) {
   }
   return swapped;
 }
-async function renderStatic(scale, { forSVG = false, originals = !forSVG, height, top = 0, transparent = false } = {}) {
-  const s = JSON.parse(serialize());
+async function renderStatic(scale, { json = null, forSVG = false, originals = !forSVG, height, top = 0, transparent = false } = {}) {
+  const s = json ? { canvas: JSON.parse(JSON.stringify(json)) } : JSON.parse(serialize());
   if (transparent) { s.canvas.background = ''; delete s.canvas.backgroundImage; s.canvas.objects = s.canvas.objects.filter((o) => o.pfRole !== 'bg'); }
   if (forSVG) await dataURLsFor(s.canvas);
   const temps = [];
@@ -1767,5 +1768,5 @@ window.PF = { canvas, history, state, serialize, restore, exportPNGBlob, exportS
   useOriginals, exportBudget, fitsBudget, exportTiled, doExport, exportSheet, updateContext, safeMargin, guides, ready: false,
   PROPS, enforceLocks, coverFitIfEmpty, projectState, projectStateForStorage, restoreProject, projectFonts, makeText, addImageFromURL, setFont, editText, ensureFonts, dataURLsFor, blobURLsFor, setLocked,
   syncEditPanel, thumbnail, setImageSrc, newPoster, openProjectsSheet, fitInside, artboardSheet, backgroundSheet, stamp, active, isText, clampFont, scheduleAutosave,
-  getCurrentPane: () => currentPane, presets: PRESETS, PANE_TITLES, CTX_PANES, TOOL_PANES };
+  getCurrentPane: () => currentPane, selectFromLayer, duplicateObj, layerMenu, thumbFor, typeLabel, blendLabel, isMultiSelect: () => multiSelect, presets: PRESETS, PANE_TITLES, CTX_PANES, TOOL_PANES };
 boot().then(() => { window.PF.ready = true; }).catch((e) => { console.error(e); toast('Startup error: ' + e.message, 'error'); window.PF.ready = true; });

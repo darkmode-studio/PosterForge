@@ -1,0 +1,34 @@
+/* PosterForge 2.3.2 layer panel. Variables scoped to the panel and mapped onto the v23 theme (no app-wide :root changes). */
+.pf-layer-panel { --pf-bg: var(--bg); --pf-surface: var(--surface-2); --pf-accent: var(--accent); --pf-text: var(--text); --pf-muted: var(--muted); --pf-t: 150ms;
+  list-style: none; margin: 0; padding: 4px 0; display: flex; flex-direction: column; gap: 6px; }
+.pf-layer-panel .layer-item { position: relative; overflow: hidden; border-radius: 14px; background: var(--pf-bg); min-height: 52px; }
+.pf-layer-panel .layer-row { position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 6px 6px 6px 4px;
+  background: var(--pf-surface); color: var(--pf-text); border: 1px solid var(--line); border-radius: 14px; touch-action: pan-y; user-select: none; -webkit-user-select: none;
+  transition: transform var(--pf-t) var(--ease-out), background var(--pf-t), border-color var(--pf-t); }
+.pf-layer-panel .layer-item.active > .layer-row { border-color: var(--pf-accent); background: linear-gradient(0deg, var(--accent-soft), var(--accent-soft)), var(--pf-surface); }
+.pf-layer-panel .layer-item.pf-in-active > .layer-row { border-color: rgba(255,181,71,.35); }
+.pf-layer-panel .layer-item.child { margin-left: 28px; min-height: 46px; }
+.pf-layer-panel .layer-item.child > .layer-row { min-height: 46px; padding-left: 10px; }
+.pf-layer-panel .layer-item.hidden-layer .layer-thumb, .pf-layer-panel .layer-item.hidden-layer .layer-name { opacity: .45; }
+.pf-layer-panel .layer-thumb { width: 40px; height: 40px; flex: none; object-fit: contain; border-radius: 8px; background: repeating-conic-gradient(#2a2e38 0 25%, #1c1f27 0 50%) 0 0/10px 10px; }
+.pf-layer-panel .layer-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pf-layer-panel .layer-name span { font-size: var(--t-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-layer-panel .layer-name small { font-size: var(--t-xs); color: var(--pf-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-layer-panel .layer-btn { width: 40px; height: 40px; min-width: 40px; display: grid; place-items: center; border: 0; background: none; color: var(--pf-muted); border-radius: 10px; }
+.pf-layer-panel .layer-btn svg { width: 20px; height: 20px; }
+.pf-layer-panel .layer-btn.on { color: var(--pf-accent); }
+.pf-layer-panel .layer-btn.grip { width: 28px; min-width: 28px; cursor: grab; touch-action: none; }
+.pf-layer-panel .pf-expand { width: 28px; min-width: 28px; font-size: 14px; transition: transform var(--pf-t); }
+.pf-layer-panel .pf-expand.open { transform: rotate(90deg); }
+/* swipe actions sit UNDER the row and only show when the row slides left */
+.pf-layer-panel .pf-actions { position: absolute; z-index: 0; inset: 0 0 0 auto; width: 136px; display: flex; visibility: hidden; }
+.pf-layer-panel .layer-item.pf-swiped .pf-actions, .pf-layer-panel .layer-row[style*="translateX"] ~ .pf-actions, .pf-layer-panel .layer-item:has(> .layer-row[style*="translateX"]) .pf-actions { visibility: visible; }
+.pf-layer-panel .pf-actions button { flex: 1; border: 0; font-size: var(--t-sm); font-weight: 600; color: #fff; }
+.pf-layer-panel .pf-dup { background: #3b4252; }
+.pf-layer-panel .pf-del { background: #d9473f; border-radius: 0 14px 14px 0; }
+/* drag: JS sets position/top; only visual lift here (no transform, so it never fights the JS positioning) */
+.pf-layer-panel .layer-item.pf-dragging { box-shadow: 0 12px 30px rgba(0,0,0,.55); opacity: .96; }
+.pf-layer-panel .layer-item.pf-dragging > .layer-row { border-color: var(--pf-accent); }
+.pf-layer-panel .pf-placeholder { list-style: none; border: 2px dashed var(--line-2); border-radius: 14px; background: var(--accent-soft); }
+.pf-layer-panel .pf-layer-empty { padding: 28px 12px; text-align: center; color: var(--pf-muted); border: 1px dashed var(--line-2); border-radius: 18px; }
+@media (prefers-reduced-motion: reduce) { .pf-layer-panel .layer-row, .pf-layer-panel .pf-expand { transition: none; } }
