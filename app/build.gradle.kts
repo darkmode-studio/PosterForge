@@ -10,6 +10,11 @@ plugins {
 val keystoreProps = Properties().apply {
     val f = rootProject.file("keystore.properties")
     if (f.exists()) f.inputStream().use { load(it) }
+    // CI (GitHub Actions): environment variables override keystore.properties when present.
+    System.getenv("PF_KEYSTORE_FILE")?.takeIf { it.isNotBlank() }?.let { setProperty("storeFile", it) }
+    System.getenv("PF_KEYSTORE_PASSWORD")?.takeIf { it.isNotBlank() }?.let { setProperty("storePassword", it) }
+    System.getenv("PF_KEY_ALIAS")?.takeIf { it.isNotBlank() }?.let { setProperty("keyAlias", it) }
+    System.getenv("PF_KEY_PASSWORD")?.takeIf { it.isNotBlank() }?.let { setProperty("keyPassword", it) }
 }
 
 android {

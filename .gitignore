@@ -5,3 +5,12 @@ app/build/
 keystore.properties
 local.properties
 *.bak
+*.keystore
+*.jks.b64
+*-keystore.properties
+*.apk
+*.aab
+*.zip
+node_modules/
+tests-web/node_modules/
+screenshots*/
