@@ -71,7 +71,7 @@ export function autoContrast(o, { keepFill = false } = {}) {
   const pf = PF(); if (!pf.isText(o)) return null;
   const s = sampleUnder(pf.canvas, o); if (!s) return null;
   // undo what auto contrast added before
-  if (o.pfAutoFx === 'shadow' || o.pfAutoFx === 'scrim') o.set({ shadow: o.pfGlow ? o.shadow : null });
+  if (o.pfAutoFx === 'shadow' || o.pfAutoFx === 'scrim') o.set({ shadow: null });
   if (o.pfAutoFx === 'scrim') o.set('textBackgroundColor', '');
   let fill = typeof o.fill === 'string' ? o.fill : '#ffffff';
   if (!keepFill || !parseHex(fill)) {
@@ -83,7 +83,7 @@ export function autoContrast(o, { keepFill = false } = {}) {
   const cr = worstContrast(fill, s);
   let fx = 'none';
   if (cr < 3 || s.busy > 0.55) { fx = 'scrim'; o.set('textBackgroundColor', light ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.55)'); }
-  else if (cr < 4.5 || s.busy > 0.3) { fx = 'shadow'; if (!o.pfGlow) o.set('shadow', new fabric.Shadow({ color: light ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.6)', blur: Math.max(8, (o.fontSize || 60) * 0.25), offsetX: 0, offsetY: 2 })); }
+  else if (cr < 4.5 || s.busy > 0.3) { fx = 'shadow'; o.set('shadow', new fabric.Shadow({ color: light ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.6)', blur: Math.max(8, (o.fontSize || 60) * 0.25), offsetX: 0, offsetY: 2 })); }
   o.set({ pfAutoFx: fx }); o.dirty = true; pf.canvas.requestRenderAll();
   return { fill, fx, contrast: cr, busy: s.busy };
 }
@@ -91,7 +91,7 @@ export function setAutoContrast(o, on) {
   const pf = PF(); if (!pf.isText(o)) return null;
   let r = null;
   if (on) { o.set('pfAutoContrast', true); r = autoContrast(o); }
-  else { if (o.pfAutoFx === 'scrim') o.set('textBackgroundColor', ''); if (o.pfAutoFx && o.pfAutoFx !== 'none' && !o.pfGlow) o.set('shadow', null); o.set({ pfAutoContrast: false, pfAutoFx: null }); o.dirty = true; pf.canvas.requestRenderAll(); }
+  else { if (o.pfAutoFx === 'scrim') o.set('textBackgroundColor', ''); if (o.pfAutoFx && o.pfAutoFx !== 'none') o.set('shadow', null); o.set({ pfAutoContrast: false, pfAutoFx: null }); o.dirty = true; pf.canvas.requestRenderAll(); }
   pf.history.record(); return r;
 }
 // keep it live while moving things around

@@ -6,6 +6,7 @@ import { registerTool, openToolLibrary, openChecklist, runChecklist, listTools, 
 import { installTextPro, openTextPro, setStrokes, setExtrude, setAutoFit, autoFit } from './textpro.js';
 import { startBrush, startEraser, startPen, stopDrawing, penAddPoint, penFinish, isDrawing } from './draw.js';
 import * as pro from './pro.js';
+import { installGlow } from './glow.js';
 import { FILM_PRESETS, openPhotoTools } from '../v2/photo.js';
 import { openCollages } from '../v22/collage.js';
 import { openBrandKit } from '../v21/brand.js';
@@ -16,6 +17,7 @@ const PF = window.PF;
 document.body.classList.add('v23');
 if (!PF.PROPS.includes('pfFill')) PF.PROPS.push('pfFill');
 installTextPro();
+installGlow(); // after every other render wrapper
 pro.installGrid();
 
 // ---------- more film looks (LUT-style presets; same filter maths natively and in the browser) ----------

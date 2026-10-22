@@ -4,6 +4,7 @@ import { WORK_SIDE, processImage, urlToBlob, isIdentityFilter } from './imaging.
 import { LATIN_ONLY, fontEntry, hasFace, boldWeightFor, LOCAL_FONTS, FONT_FAMILIES, FONT_CATALOG, FONT_GROUPS, MALAYALAM_FONTS, MALAYALAM_RE, loadAllFonts, registerFonts, sanitizeSVG, svgToDataURL, fileToImage, imageToCanvas,
   canvasToBlob, traceImageFileToSVG, cutoutCanvas, extractPalette, convertFabricTextToVector } from './tools.js';
 import { History } from './history.js';
+import { migrateCanvas } from './v23/glow.js';
 import { el, sheet, confirmSheet, promptSheet, menuSheet, closeTopSheet, toast, busy, actionToast, progressTask } from './ui.js';
 import { hasNative, N, sendBlob, gemini, haptic, geminiModels, defaultModels, memoryInfo, hasNativeExport, nativeExport } from './native.js';
 
@@ -162,6 +163,7 @@ async function restore(str) {
   await blobURLsFor(s.canvas);
   await ensureFonts(s.canvas);
   await new Promise((r) => canvas.loadFromJSON(s.canvas, r));
+  migrateCanvas(canvas); // 2.3.1: old single-slot glow -> separate glow + drop shadow
   await prepareMasks(canvas.getObjects());
   enforceLocks();
   canvas.getObjects().forEach((o) => { if (o.type === 'text' || o.type === 'i-text') o.initDimensions(); o.setCoords(); });

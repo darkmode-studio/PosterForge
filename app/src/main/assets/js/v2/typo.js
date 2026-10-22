@@ -3,7 +3,8 @@
 import { el, toast, promptSheet, confirmSheet } from '../ui.js';
 import { haptic } from '../native.js';
 import { fontEntry, hasFace, boldWeightFor } from '../tools.js';
-import { setWarp, gradientFill, textureFill, glowShadow } from './textfx.js';
+import { setWarp, gradientFill, textureFill } from './textfx.js';
+import { glowOf, glowOn, applyGlow, migrateGlow, GLOW_DEFAULT } from '../v23/glow.js';
 import { openFontPicker, favs } from './fonts.js';
 
 const PF = () => window.PF;
@@ -13,7 +14,7 @@ export const BUILTIN_STYLES = [
   { name: 'Cinematic yellow', fontFamily: 'Bebas Neue', fontWeight: 400, fill: '#ffd400', charSpacing: 40, lineHeight: 1.0, shadow: { color: 'rgba(0,0,0,0.75)', blur: 18, offsetX: 0, offsetY: 4 } },
   { name: 'Serif hook', fontFamily: 'DM Serif Display', fontWeight: 400, fill: '#ffffff', charSpacing: -10, lineHeight: 1.02, shadow: { color: 'rgba(0,0,0,0.35)', blur: 24, offsetX: 0, offsetY: 2 } },
   { name: 'Film quote', fontFamily: 'Cormorant Garamond', fontWeight: 400, fontStyle: 'italic', fill: '#f4efe6', charSpacing: 20, lineHeight: 1.3 },
-  { name: 'Neon glow', fontFamily: 'Monoton', fontWeight: 400, fill: '#ffffff', pfGlow: '#ff2bd6', shadow: { color: '#ff2bd6', blur: 30, offsetX: 0, offsetY: 0 } },
+  { name: 'Neon glow', fontFamily: 'Monoton', fontWeight: 400, fill: '#ffffff', pfGlow: { on: true, color: '#ff2bd6', blur: 30, opacity: 1 } },
   { name: 'Sunset gradient', fontFamily: 'Anton', fontWeight: 400, pfFillMode: 'gradient', gradient: ['#ffb347', '#ff4e8a', 90], charSpacing: 10 },
   { name: 'Outline pop', fontFamily: 'Poppins', fontWeight: 700, fill: '#ffffff', stroke: '#ff3b5c', strokeWidth: 6, charSpacing: 0, lineHeight: 1.05 },
   { name: 'Gold serif', fontFamily: 'Playfair Display', fontWeight: 700, pfFillMode: 'gradient', gradient: ['#f6e27a', '#b8860b', 90], lineHeight: 1.1, shadow: { color: 'rgba(0,0,0,0.5)', blur: 12, offsetX: 0, offsetY: 3 } },
@@ -22,7 +23,7 @@ export const BUILTIN_STYLES = [
 export const savedStyles = () => { try { return JSON.parse(localStorage.getItem(STYLE_KEY) || '[]'); } catch (_) { return []; } };
 export function captureStyle(o, name) {
   const st = { name, fontFamily: o.fontFamily, fontWeight: o.fontWeight, fontStyle: o.fontStyle, charSpacing: o.charSpacing || 0, lineHeight: o.lineHeight,
-    stroke: o.stroke || null, strokeWidth: o.strokeWidth || 0, textAlign: o.textAlign, pfGlow: o.pfGlow || null, pfWarp: o.pfWarp || null, pfWarpAmt: o.pfWarpAmt || 0,
+    stroke: o.stroke || null, strokeWidth: o.strokeWidth || 0, textAlign: o.textAlign, pfGlow: glowOf(o), pfWarp: o.pfWarp || null, pfWarpAmt: o.pfWarpAmt || 0,
     shadow: o.shadow ? { color: o.shadow.color, blur: o.shadow.blur, offsetX: o.shadow.offsetX, offsetY: o.shadow.offsetY } : null, pfFillMode: o.pfFillMode || 'solid' };
   if (typeof o.fill === 'string') st.fill = o.fill;
   else if (o.fill && o.fill.colorStops) { const cs = o.fill.colorStops; const c = o.fill.coords; st.gradient = [cs[0].color, cs[cs.length - 1].color, Math.round(Math.atan2(c.y2 - c.y1, c.x2 - c.x1) * 180 / Math.PI)]; st.pfFillMode = 'gradient'; }
@@ -40,6 +41,7 @@ export async function applyStyle(o, st) {
   o.set({ fontFamily: fam, fontWeight: st.fontWeight || o.fontWeight, fontStyle: st.fontStyle || 'normal', charSpacing: st.charSpacing || 0, lineHeight: st.lineHeight || o.lineHeight,
     stroke: st.stroke || null, strokeWidth: st.strokeWidth || 0, paintFirst: 'stroke', strokeLineJoin: 'round', pfGlow: st.pfGlow || null,
     shadow: st.shadow ? new fabric.Shadow(st.shadow) : null, pfFillMode: st.pfFillMode || 'solid' });
+  migrateGlow(o); // styles saved before 2.3.1 kept glow in the shadow slot
   if (st.textAlign) o.set('textAlign', st.textAlign);
   o.initDimensions();
   if (st.gradient) o.set('fill', gradientFill(o, st.gradient[0], st.gradient[1], st.gradient[2]));
@@ -74,7 +76,8 @@ export function buildTypoPane() {
     el('h3', { text: 'Glow' }),
     el('div', { class: 'row' }, el('button', { class: 'chip rip', id: 'tyGlowBtn', text: 'Glow off' }), el('input', { type: 'color', id: 'tyGlowColor', value: '#ff2bd6', 'aria-label': 'Glow colour' })),
     slider('tyGlow', 'Glow size', 2, 80, 1, 28),
-    el('p', { class: 'note', text: 'Glow uses the text’s shadow slot (turning glow on replaces a drop shadow). Outline is in the Outline tool.' }),
+    slider('tyGlowOp', 'Glow strength', 5, 100, 1, 100),
+    el('p', { class: 'note', text: 'Glow and drop shadow are separate: both can be on at once. Drop shadow is in the Shadow tool, outline in the Outline tool.' }),
     el('div', { class: 'row-between' }, el('h3', { text: 'Text styles' }), el('button', { class: 'btn-tonal rip', id: 'tySaveStyle', text: 'Save this style' })),
     el('div', { class: 'style-grid', id: 'tyStyles' }));
   document.querySelector('.panel-body').append(pane);
@@ -92,10 +95,11 @@ export function buildTypoPane() {
   pane.querySelectorAll('[data-g]').forEach((b) => { b.onclick = () => { const [a, c] = b.dataset.g.split(','); $('tyG1').value = a; $('tyG2').value = c; grad(); pf.history.record(); syncTypo(); }; });
   $('tyTexture').addEventListener('change', async (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) await setTexture(f); });
   $('tyGlowBtn').onclick = () => { const o = pf.active(); if (!pf.isText(o)) return; haptic();
-    if (o.pfGlow) o.set({ pfGlow: null, shadow: null }); else o.set({ pfGlow: $('tyGlowColor').value, shadow: glowShadow($('tyGlowColor').value, Number($('tyGlow').value)) });
+    applyGlow(o, { on: !glowOn(o), color: $('tyGlowColor').value, blur: Number($('tyGlow').value), opacity: Number($('tyGlowOp').value) / 100 });
     o.dirty = true; pf.canvas.requestRenderAll(); pf.history.record(); syncTypo(); };
-  const glowLive = () => { const o = pf.active(); if (!pf.isText(o) || !o.pfGlow) return; o.set({ pfGlow: $('tyGlowColor').value, shadow: glowShadow($('tyGlowColor').value, Number($('tyGlow').value)) }); o.dirty = true; pf.canvas.requestRenderAll(); };
+  const glowLive = () => { const o = pf.active(); if (!pf.isText(o) || !glowOn(o)) return; applyGlow(o, { color: $('tyGlowColor').value, blur: Number($('tyGlow').value), opacity: Number($('tyGlowOp').value) / 100 }); };
   $('tyGlow').addEventListener('input', () => { $('tyGlowVal').textContent = $('tyGlow').value; glowLive(); }); $('tyGlow').addEventListener('change', () => pf.history.record());
+  $('tyGlowOp').addEventListener('input', () => { $('tyGlowOpVal').textContent = $('tyGlowOp').value + '%'; glowLive(); }); $('tyGlowOp').addEventListener('change', () => pf.history.record());
   $('tyGlowColor').addEventListener('input', glowLive); $('tyGlowColor').addEventListener('change', () => pf.history.record());
   $('tySaveStyle').onclick = async () => { const o = pf.active(); if (!pf.isText(o)) return; const n = await promptSheet('Save text style', { value: `${o.fontFamily} style`, okLabel: 'Save' }); if (!n || !n.trim()) return; saveStyle(captureStyle(o, n.trim().slice(0, 40))); toast('Style saved'); renderStyles(); };
   renderStyles();
@@ -143,8 +147,10 @@ export function syncTypo() {
   const fm = o.pfFillMode || (typeof o.fill === 'string' ? 'solid' : o.fill && o.fill.colorStops ? 'gradient' : 'photo');
   document.querySelectorAll('#tyFill .chip').forEach((c) => c.classList.toggle('on', c.dataset.fill === fm));
   $('tyGradRow').classList.toggle('hidden', fm !== 'gradient'); $('tyGAngle').closest('.slider-row').classList.toggle('hidden', fm !== 'gradient'); $('tyTexBtn').classList.toggle('hidden', fm !== 'photo');
-  $('tyGlowBtn').textContent = o.pfGlow ? 'Glow on' : 'Glow off'; $('tyGlowBtn').classList.toggle('on', !!o.pfGlow);
-  if (o.pfGlow) $('tyGlowColor').value = o.pfGlow;
+  const g = glowOf(o); const gon = glowOn(o);
+  $('tyGlowBtn').textContent = gon ? 'Glow on' : 'Glow off'; $('tyGlowBtn').classList.toggle('on', gon);
+  if (g) { $('tyGlowColor').value = /^#[0-9a-f]{6}/i.test(g.color) ? g.color.slice(0, 7) : GLOW_DEFAULT.color; $('tyGlow').value = g.blur; $('tyGlowVal').textContent = $('tyGlow').value;
+    $('tyGlowOp').value = Math.round(g.opacity * 100); $('tyGlowOpVal').textContent = $('tyGlowOp').value + '%'; }
   syncFontPane();
 }
 
