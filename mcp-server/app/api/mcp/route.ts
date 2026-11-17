@@ -18,14 +18,11 @@ const handler = createMcpHandler((server) => {
     },
     async ({ title, content }) => {
       try {
-        // Resolve the path to the python script in the parent directory
-        // Note: Depending on your Vercel project root settings, you may need to ensure 
-        // the python script is included in the serverless function build.
+        // Adjust the path to where the python script exists relative to Next.js root
         const scriptPath = path.resolve(process.cwd(), '../build-fonts-v2.py');
         
-        // Execute the python script with the provided arguments
-        // You may need to adjust the argument format to exactly match what build-fonts-v2.py expects
-        const { stdout, stderr } = await execAsync(`python "${scriptPath}" "${title}" "${content}"`);
+        // Execute the python script
+        const { stdout, stderr } = await execAsync(`python3 "${scriptPath}" "${title}" "${content}"`);
         
         return { 
           content: [{ 
@@ -53,10 +50,11 @@ const handler = createMcpHandler((server) => {
     },
     async () => {
       return { 
-        content: [{ type: 'text', text: 'PosterForge MCP server is active and connected to Python scripts.' }] 
+        content: [{ type: 'text', text: 'PosterForge MCP server is active, stable, and ready.' }] 
       };
     }
   );
 });
 
-export const POST = handler;
+// For Next.js App Router, we export GET and POST
+export { handler as GET, handler as POST };
