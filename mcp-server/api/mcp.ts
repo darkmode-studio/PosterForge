@@ -1,5 +1,10 @@
 import { createMcpHandler } from 'mcp-handler';
 import { z } from 'zod';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import path from 'path';
+
+const execAsync = promisify(exec);
 
 const handler = createMcpHandler((server) => {
   server.registerTool(
@@ -12,14 +17,31 @@ const handler = createMcpHandler((server) => {
       }),
     },
     async ({ title, content }) => {
-      // In a full implementation, you can call the python scripts here via child_process
-      // or HTTP requests depending on where they run.
-      return { 
-        content: [{ 
-          type: 'text', 
-          text: `Successfully triggered poster generation for "${title}".\n\nContent:\n${content}`
-        }] 
-      };
+      try {
+        // Resolve the path to the python script in the parent directory
+        // Note: Depending on your Vercel project root settings, you may need to ensure 
+        // the python script is included in the serverless function build.
+        const scriptPath = path.resolve(process.cwd(), '../build-fonts-v2.py');
+        
+        // Execute the python script with the provided arguments
+        // You may need to adjust the argument format to exactly match what build-fonts-v2.py expects
+        const { stdout, stderr } = await execAsync(`python "${scriptPath}" "${title}" "${content}"`);
+        
+        return { 
+          content: [{ 
+            type: 'text', 
+            text: `Successfully executed Python script.\n\nStdout:\n${stdout}\n\nStderr:\n${stderr}`
+          }] 
+        };
+      } catch (error: any) {
+        return {
+          content: [{ 
+            type: 'text', 
+            text: `Failed to execute python script:\n${error.message}` 
+          }],
+          isError: true
+        };
+      }
     }
   );
   
@@ -31,7 +53,7 @@ const handler = createMcpHandler((server) => {
     },
     async () => {
       return { 
-        content: [{ type: 'text', text: 'PosterForge MCP server is active and ready.' }] 
+        content: [{ type: 'text', text: 'PosterForge MCP server is active and connected to Python scripts.' }] 
       };
     }
   );
